@@ -1,0 +1,30 @@
+-- qitech.head_office_user_timings definition
+
+CREATE TABLE `head_office_user_timings` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `monday_start_time` time DEFAULT NULL,
+  `monday_end_time` time DEFAULT NULL,
+  `tuesday_start_time` time DEFAULT NULL,
+  `tuesday_end_time` time DEFAULT NULL,
+  `wednesday_start_time` time DEFAULT NULL,
+  `wednesday_end_time` time DEFAULT NULL,
+  `thursday_start_time` time DEFAULT NULL,
+  `thursday_end_time` time DEFAULT NULL,
+  `friday_start_time` time DEFAULT NULL,
+  `friday_end_time` time DEFAULT NULL,
+  `saturday_start_time` time DEFAULT NULL,
+  `saturday_end_time` time DEFAULT NULL,
+  `sunday_start_time` time DEFAULT NULL,
+  `sunday_end_time` time DEFAULT NULL,
+  `is_open_monday` tinyint NOT NULL DEFAULT '0',
+  `is_open_tuesday` tinyint NOT NULL DEFAULT '0',
+  `is_open_wednesday` tinyint NOT NULL DEFAULT '0',
+  `is_open_thursday` tinyint NOT NULL DEFAULT '0',
+  `is_open_friday` tinyint NOT NULL DEFAULT '0',
+  `is_open_saturday` tinyint NOT NULL DEFAULT '0',
+  `is_open_sunday` tinyint NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `head_office_user_timings_id_foreign` FOREIGN KEY (`id`) REFERENCES `head_office_users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=278 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
