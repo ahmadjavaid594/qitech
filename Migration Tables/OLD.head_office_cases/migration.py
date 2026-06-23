@@ -2,7 +2,8 @@
 """
 Comprehensive Migration: Old System (MySQL) -> New System (Postgres)
 Covers: Templates, Statuses, Workflows, Cases, Case Statuses, Closing Reasons, 
-        Case Stages, Investigator Groups (Handlers), and Tags.
+        Case Stages, and Investigator Groups (Handlers).
+Includes strict deduplication for templates and circular FK resolution.
 """
 import os
 import sys
@@ -17,6 +18,7 @@ try:
     import psycopg2.extras
 except Exception as e:
     logging.error("Missing Python dependency: %s", e)
+    logging.error("Install dependencies: pip install pymysql psycopg2-binary")
     sys.exit(1)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -43,17 +45,14 @@ def build_maps(pg_conn) -> Tuple[Dict, Dict, Dict]:
     template_name_cache = {}
     
     with pg_conn.cursor() as cur:
-        # 1. Companies
         cur.execute("SELECT id, external_id FROM public.companies WHERE external_id IS NOT NULL")
         for row in cur.fetchall():
             company_map[str(row[1])] = str(row[0])
             
-        # 2. Company Users (for case handlers)
         cur.execute("SELECT id, external_id FROM public.company_users WHERE external_id IS NOT NULL")
         for row in cur.fetchall():
             company_user_map[str(row[1])] = str(row[0])
             
-        # 3. Template Name Cache (for fallback matching)
         cur.execute("SELECT id, name, company_id FROM public.case_templates")
         for row in cur.fetchall():
             comp = str(row[2])
@@ -68,12 +67,12 @@ def build_maps(pg_conn) -> Tuple[Dict, Dict, Dict]:
 # PHASE 1: TEMPLATES & CONFIGURATIONS
 # ==========================================
 def migrate_templates_and_configs(mysql_conn, pg_conn, company_map):
-    logging.info("=== PHASE 1: Migrating Templates & Configurations ===")
+    logging.info("=== PHASE 1: Migrating Templates & Configurations (With Deduplication) ===")
     form_to_template_map = {}
     template_to_workflow_map = {}
     company_templates = {} 
 
-    # 1.1 Migrate case_templates from be_spoke_form
+    # 1.1 Migrate case_templates (Deduplicated)
     logging.info("Migrating case_templates from be_spoke_form...")
     with mysql_conn.cursor() as m_cur:
         m_cur.execute("""
@@ -85,32 +84,41 @@ def migrate_templates_and_configs(mysql_conn, pg_conn, company_map):
         
     template_inserts = []
     closing_reason_template_inserts = []
+    seen_templates = {} # Tracks (company_id, name_lower) -> template_id to prevent dups
     
     for form in forms:
         ho_id = str(form['reference_id'])
         company_id = company_map.get(ho_id)
         if not company_id: continue
             
-        template_id = str(uuid.uuid4())
-        form_to_template_map[form['id']] = template_id
-        
-        if company_id not in company_templates:
-            company_templates[company_id] = []
-        company_templates[company_id].append(template_id)
-        
         name = form['display_name'] or form['name'] or f"Template {form['id']}"
-        deleted_at = form['deleted_at'] or (datetime.now(timezone.utc) if form['is_archived'] else None)
+        name_lower = name.lower().strip()
+        cache_key = (company_id, name_lower)
         
-        template_inserts.append((
-            template_id, name, company_id, False, False, 
-            bool(form['requires_final_approval']), bool(form['is_close_case_mandatory']),
-            datetime.now(timezone.utc), datetime.now(timezone.utc), deleted_at
-        ))
-        
-        closing_reason_template_inserts.append((
-            str(uuid.uuid4()), template_id, 'Closed', 'Migrated from legacy system',
-            datetime.now(timezone.utc), datetime.now(timezone.utc)
-        ))
+        if cache_key in seen_templates:
+            template_id = seen_templates[cache_key]
+        else:
+            template_id = str(uuid.uuid4())
+            seen_templates[cache_key] = template_id
+            
+            if company_id not in company_templates:
+                company_templates[company_id] = []
+            company_templates[company_id].append(template_id)
+            
+            deleted_at = form.get('deleted_at') or (datetime.now(timezone.utc) if form.get('is_archived') else None)
+            
+            template_inserts.append((
+                template_id, name, company_id, False, False, 
+                bool(form.get('requires_final_approval')), bool(form.get('is_close_case_mandatory')),
+                datetime.now(timezone.utc), datetime.now(timezone.utc), deleted_at
+            ))
+            
+            closing_reason_template_inserts.append((
+                str(uuid.uuid4()), template_id, 'Closed', 'Migrated from legacy system',
+                datetime.now(timezone.utc), datetime.now(timezone.utc)
+            ))
+            
+        form_to_template_map[form['id']] = template_id
         
     if template_inserts:
         with pg_conn.cursor() as p_cur:
@@ -131,15 +139,17 @@ def migrate_templates_and_configs(mysql_conn, pg_conn, company_map):
                 closing_reason_template_inserts
             )
         pg_conn.commit()
-    logging.info(f"Migrated {len(template_inserts)} case_templates.")
+    logging.info(f"Migrated {len(template_inserts)} UNIQUE case_templates.")
 
-    # 1.2 Migrate case_template_statuses from case_statuses
+    # 1.2 Migrate case_template_statuses (Deduplicated)
     logging.info("Migrating case_template_statuses...")
     with mysql_conn.cursor() as m_cur:
         m_cur.execute("SELECT id, head_office_id, status, form_id FROM case_statuses")
         old_statuses = m_cur.fetchall()
         
     status_inserts = []
+    seen_statuses = set() 
+    
     for stat in old_statuses:
         ho_id = str(stat['head_office_id'])
         company_id = company_map.get(ho_id)
@@ -151,9 +161,14 @@ def migrate_templates_and_configs(mysql_conn, pg_conn, company_map):
         elif company_id in company_templates:
             template_ids = company_templates[company_id]
             
+        status_key = stat['status'].strip().lower()
         for tid in template_ids:
+            if (tid, status_key) in seen_statuses:
+                continue
+            seen_statuses.add((tid, status_key))
+            
             status_inserts.append((
-                str(uuid.uuid4()), tid, stat['status'].strip().lower(), stat['status'],
+                str(uuid.uuid4()), tid, status_key, stat['status'],
                 None, False, 0, datetime.now(timezone.utc), datetime.now(timezone.utc)
             ))
             
@@ -168,9 +183,9 @@ def migrate_templates_and_configs(mysql_conn, pg_conn, company_map):
                 status_inserts
             )
         pg_conn.commit()
-    logging.info(f"Migrated {len(status_inserts)} case_template_statuses.")
+    logging.info(f"Migrated {len(status_inserts)} UNIQUE case_template_statuses.")
 
-    # 1.3 Migrate case_template_workflows & stages from default_case_stages
+    # 1.3 Migrate Workflows & Stages (Deduplicated)
     logging.info("Migrating case_template_workflows and stages...")
     with mysql_conn.cursor() as m_cur:
         m_cur.execute("SELECT id, be_spoke_form_id, name FROM default_case_stages")
@@ -184,15 +199,27 @@ def migrate_templates_and_configs(mysql_conn, pg_conn, company_map):
         
     workflow_inserts = []
     stage_inserts = []
+    seen_workflows = {} 
+    seen_stages = set() 
     
     for fid, stages in stages_by_form.items():
         if fid not in form_to_template_map: continue
         tid = form_to_template_map[fid]
-        workflow_id = str(uuid.uuid4())
-        template_to_workflow_map[tid] = workflow_id
         
-        workflow_inserts.append((workflow_id, tid, "Default Workflow", datetime.now(timezone.utc), datetime.now(timezone.utc)))
+        if tid in seen_workflows:
+            workflow_id = seen_workflows[tid]
+        else:
+            workflow_id = str(uuid.uuid4())
+            seen_workflows[tid] = workflow_id
+            template_to_workflow_map[tid] = workflow_id
+            workflow_inserts.append((workflow_id, tid, "Default Workflow", datetime.now(timezone.utc), datetime.now(timezone.utc)))
+            
         for stage in stages:
+            stage_name_lower = stage['name'].lower().strip()
+            stage_key = (workflow_id, stage_name_lower)
+            if stage_key in seen_stages:
+                continue
+            seen_stages.add(stage_key)
             stage_inserts.append((str(uuid.uuid4()), workflow_id, stage['name'], datetime.now(timezone.utc), datetime.now(timezone.utc)))
             
     if workflow_inserts:
@@ -208,25 +235,24 @@ def migrate_templates_and_configs(mysql_conn, pg_conn, company_map):
                    VALUES %s ON CONFLICT (id) DO NOTHING""", stage_inserts
             )
         pg_conn.commit()
-    logging.info(f"Migrated {len(workflow_inserts)} template workflows and {len(stage_inserts)} stages.")
+    logging.info(f"Migrated {len(workflow_inserts)} UNIQUE template workflows and {len(stage_inserts)} UNIQUE stages.")
     
     return form_to_template_map, template_to_workflow_map, company_templates
 
 # ==========================================
-# PHASE 2, 3, 4: CASES, WORKFLOWS, HANDLERS, TAGS
+# PHASE 2, 3, 4: CASES, WORKFLOWS, HANDLERS
 # ==========================================
 def migrate_cases_and_instances(mysql_conn, pg_conn, company_map, company_user_map, 
                                 template_name_cache, form_to_template_map, template_to_workflow_map):
-    logging.info("=== PHASE 2, 3, 4: Migrating Cases, Workflows, Handlers & Tags ===")
+    logging.info("=== PHASE 2, 3, 4: Migrating Cases, Workflows & Handlers ===")
     
-    # Build record -> form map
     record_to_form_map = {}
     with mysql_conn.cursor() as m_cur:
         m_cur.execute("SELECT id, form_id FROM be_spoke_form_records")
         for row in m_cur.fetchall():
             record_to_form_map[row['id']] = row['form_id']
             
-    case_mapping = {} # old_case_id -> (new_case_id, new_workflow_id)
+    case_mapping = {} # old_case_id -> (new_case_id, new_workflow_id, new_investigator_group_id)
     
     offset = 0
     total_cases = 0
@@ -250,14 +276,12 @@ def migrate_cases_and_instances(mysql_conn, pg_conn, company_map, company_user_m
         workflow_inserts = []
         case_status_updates = []
         investigator_group_inserts = []
-        investigator_user_inserts = []
         
         for c in cases:
             ho_id = str(c['head_office_id'])
             company_id = company_map.get(ho_id)
             if not company_id: continue
                 
-            # Resolve template_id
             template_id = None
             if c['last_linked_incident_id'] in record_to_form_map:
                 fid = record_to_form_map[c['last_linked_incident_id']]
@@ -286,14 +310,12 @@ def migrate_cases_and_instances(mysql_conn, pg_conn, company_map, company_user_m
             updated_at = c['updated_at'] or datetime.now(timezone.utc)
             deleted_at = updated_at if c['isArchived'] else None
             
-            # 1. Case Insert (status_id = NULL to avoid circular FK)
             case_inserts.append((
                 new_case_id, company_id, template_id, title, identifier, case_type, None, 
                 False, False, bool(c['requires_final_approval']), True,
                 created_at, updated_at, deleted_at
             ))
             
-            # 2. Status Insert
             status_inserts.append((
                 new_status_id, new_case_id, None, status_key, status_key.replace('_', ' ').title(),
                 False, 0, created_at, updated_at
@@ -311,14 +333,13 @@ def migrate_cases_and_instances(mysql_conn, pg_conn, company_map, company_user_m
                 new_workflow_id, new_case_id, template_workflow_id, "Case Workflow", created_at, updated_at
             ))
             
-            # Investigator Group (for handlers)
             investigator_group_inserts.append((
                 new_investigator_group_id, new_case_id, "Legacy Handlers", created_at
             ))
             
         if case_inserts:
             with pg_conn.cursor() as p_cur:
-                # Step 1: Insert Cases
+                # Step 1: Insert Cases (status_id = NULL to bypass circular FK)
                 psycopg2.extras.execute_values(
                     p_cur,
                     """INSERT INTO public.cases (
@@ -452,7 +473,7 @@ def main():
         
         form_to_template_map, template_to_workflow_map, company_templates = migrate_templates_and_configs(mysql_conn, pg_conn, company_map)
         
-        # Refresh template cache after Phase 1
+        # Refresh template cache after Phase 1 to ensure fallback matching works perfectly
         with pg_conn.cursor() as cur:
             cur.execute("SELECT id, name, company_id FROM public.case_templates")
             for row in cur.fetchall():
@@ -466,7 +487,7 @@ def main():
             template_name_cache, form_to_template_map, template_to_workflow_map
         )
         
-        logging.info("Full comprehensive migration completed successfully!")
+        logging.info("🎉 Full comprehensive migration completed successfully!")
 
     finally:
         mysql_conn.close()
