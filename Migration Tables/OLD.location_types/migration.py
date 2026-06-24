@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Migrate data from MySQL `qitech.dmd_control_drug_categories` to Postgres `public.dmd_lookup_control_drug_categories`.
+"""Migrate data from MySQL `qitech.location_types` to Postgres `public.site_types`.
 
 Set connection details via environment variables or edit the defaults below.
 """
@@ -28,28 +28,14 @@ MYSQL_USER = os.getenv("MYSQL_USER", "root")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "root")
 MYSQL_DB = os.getenv("MYSQL_DB", "qitech")
 
-PG_HOST = os.getenv("PG_HOST", "qitech-pg-test-17943.postgres.database.azure.com")
+PG_HOST = os.getenv("PG_HOST", "localhost")
 PG_PORT = int(os.getenv("PG_PORT", "5432"))
-PG_USER = os.getenv("PG_USER", "zuhair")
-PG_PASSWORD = os.getenv("PG_PASSWORD", "a47faf48e403c78d8729cbd2bf7181cf")
-PG_DB = os.getenv("PG_DB", "qi-tech")
+PG_USER = os.getenv("PG_USER", "postgres")
+PG_PASSWORD = os.getenv("PG_PASSWORD", "postgres")
+PG_DB = os.getenv("PG_DB", "postgres")
+
 # Batch size for fetching/inserting
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
-
-
-def fetch_mysql_rows(connection, offset: int, limit: int) -> List[Dict[str, Any]]:
-    with connection.cursor() as cur:
-        cur.execute(
-            "SELECT cd, `desc` AS description, created_at, updated_at FROM dmd_control_drug_categories ORDER BY cd LIMIT %s OFFSET %s",
-            (limit, offset),
-        )
-        return cur.fetchall()
-
-
-def get_existing_ids(pg_conn) -> set:
-    with pg_conn.cursor() as cur:
-        cur.execute("SELECT id FROM public.dmd_lookup_control_drug_categories")
-        return {row[0] for row in cur.fetchall()}
 
 
 def parse_int(value: Any) -> int | None:
@@ -61,18 +47,35 @@ def parse_int(value: Any) -> int | None:
         return None
 
 
-def transform_row(row: Dict[str, Any]) -> Dict[str, Any]:
-    raw_id = row.get("cd")
-    target_id = parse_int(raw_id)
-    if target_id is None:
-        raise ValueError(f"Missing or invalid cd value for id: {raw_id!r}")
+def fetch_mysql_rows(connection, offset: int, limit: int) -> List[Dict[str, Any]]:
+    with connection.cursor() as cur:
+        cur.execute(
+            "SELECT id, name, created_at, updated_at FROM location_types ORDER BY id LIMIT %s OFFSET %s",
+            (limit, offset),
+        )
+        return cur.fetchall()
 
+
+def get_existing_names(pg_conn) -> set:
+    with pg_conn.cursor() as cur:
+        cur.execute("SELECT name FROM public.site_types")
+        return {row[0] for row in cur.fetchall()}
+
+
+def transform_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    name = row.get("name")
+    if not name:
+        raise ValueError("Source location_types row is missing name")
+
+    external_id = parse_int(row.get("id"))
     created_at = row.get("created_at") or datetime.now(timezone.utc)
     updated_at = row.get("updated_at") or datetime.now(timezone.utc)
 
     return {
-        "id": target_id,
-        "description": row.get("description"),
+        "external_id": external_id,
+        "name": name,
+        "parent_id": None,
+        "has_regulatory_body": False,
         "created_at": created_at,
         "updated_at": updated_at,
     }
@@ -81,17 +84,22 @@ def transform_row(row: Dict[str, Any]) -> Dict[str, Any]:
 def insert_batch(pg_conn, rows: List[Dict[str, Any]]):
     if not rows:
         return
+
     cols = [
-        "id",
-        "description",
+        "external_id",
+        "name",
+        "parent_id",
+        "has_regulatory_body",
         "created_at",
         "updated_at",
     ]
     template = "(%s)" % ",".join(["%s"] * len(cols))
     values = [
         (
-            r["id"],
-            r["description"],
+            r["external_id"],
+            r["name"],
+            r["parent_id"],
+            r["has_regulatory_body"],
             r["created_at"],
             r["updated_at"],
         )
@@ -99,8 +107,9 @@ def insert_batch(pg_conn, rows: List[Dict[str, Any]]):
     ]
 
     sql = (
-        "INSERT INTO public.dmd_lookup_control_drug_categories (" +
-        ",".join(cols) + ") VALUES %s"
+        "INSERT INTO public.site_types (" + 
+        ",".join(cols) + ") VALUES %s "
+        "ON CONFLICT (name) DO UPDATE SET external_id = COALESCE(public.site_types.external_id, EXCLUDED.external_id)"
     )
 
     with pg_conn.cursor() as cur:
@@ -124,8 +133,8 @@ def main(dry_run: bool = False):
     pg_conn = psycopg2.connect(host=PG_HOST, port=PG_PORT, user=PG_USER, password=PG_PASSWORD, dbname=PG_DB)
 
     try:
-        existing = get_existing_ids(pg_conn)
-        logging.info("Found %d existing ids in Postgres", len(existing))
+        existing = get_existing_names(pg_conn)
+        logging.info("Found %d existing site_types names in Postgres", len(existing))
 
         offset = 0
         total_inserted = 0
@@ -137,10 +146,10 @@ def main(dry_run: bool = False):
             transformed = []
             for r in rows:
                 t = transform_row(r)
-                if t["id"] in existing:
+                if t["name"] in existing:
                     continue
                 transformed.append(t)
-                existing.add(t["id"])
+                existing.add(t["name"])
 
             if dry_run:
                 logging.info("Dry-run: would insert %d rows for offset %d", len(transformed), offset)

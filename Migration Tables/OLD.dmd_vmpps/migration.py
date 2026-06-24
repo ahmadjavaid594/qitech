@@ -29,12 +29,11 @@ MYSQL_USER = os.getenv("MYSQL_USER", "root")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "root")
 MYSQL_DB = os.getenv("MYSQL_DB", "qitech")
 
-PG_HOST = os.getenv("PG_HOST", "localhost")
+PG_HOST = os.getenv("PG_HOST", "qitech-pg-test-17943.postgres.database.azure.com")
 PG_PORT = int(os.getenv("PG_PORT", "5432"))
-PG_USER = os.getenv("PG_USER", "postgres")
-PG_PASSWORD = os.getenv("PG_PASSWORD", "postgres")
-PG_DB = os.getenv("PG_DB", "postgres")
-
+PG_USER = os.getenv("PG_USER", "zuhair")
+PG_PASSWORD = os.getenv("PG_PASSWORD", "a47faf48e403c78d8729cbd2bf7181cf")
+PG_DB = os.getenv("PG_DB", "qi-tech")
 # Batch size for fetching/inserting
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
 
