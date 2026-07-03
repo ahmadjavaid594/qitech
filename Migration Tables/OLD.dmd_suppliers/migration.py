@@ -30,8 +30,8 @@ MYSQL_DB = os.getenv("MYSQL_DB", "qitech")
 
 PG_HOST = os.getenv("PG_HOST", "qitech-pg-test-17943.postgres.database.azure.com")
 PG_PORT = int(os.getenv("PG_PORT", "5432"))
-PG_USER = os.getenv("PG_USER", "zuhair")
-PG_PASSWORD = os.getenv("PG_PASSWORD", "a47faf48e403c78d8729cbd2bf7181cf")
+PG_USER = os.getenv("PG_USER", "pgadmin")
+PG_PASSWORD = os.getenv("PG_PASSWORD", "2fac05f6ac12e581bc2aeb8bc188deac")
 PG_DB = os.getenv("PG_DB", "qi-tech")
 
 # Batch size for fetching/inserting
@@ -87,12 +87,14 @@ def insert_batch(pg_conn, rows: List[Dict[str, Any]]):
 
     sql = (
         "INSERT INTO public.dmd_lookup_suppliers (" + 
-        ",".join(cols) + ") VALUES %s"
+        ",".join(cols) + ") VALUES %s ON CONFLICT (id) DO UPDATE SET description = EXCLUDED.description, updated_at = EXCLUDED.updated_at"
     )
 
     with pg_conn.cursor() as cur:
         psycopg2.extras.execute_values(cur, sql, values, template=template)
     pg_conn.commit()
+
+    return len(rows)
 
 
 def main(dry_run: bool = False):
@@ -132,9 +134,9 @@ def main(dry_run: bool = False):
             if dry_run:
                 logging.info("Dry-run: would insert %d rows for offset %d", len(transformed), offset)
             else:
-                insert_batch(pg_conn, transformed)
-                total_inserted += len(transformed)
-                logging.info("Inserted %d rows (offset %d)", len(transformed), offset)
+                inserted = insert_batch(pg_conn, transformed)
+                total_inserted += inserted
+                logging.info("Inserted %d rows (offset %d)", inserted, offset)
 
             offset += BATCH_SIZE
 

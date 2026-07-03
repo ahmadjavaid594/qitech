@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Migrate data from MySQL `qitech.dmd_ingredients` to Postgres `public.dmd_ingredient_substances`.
+"""Migrate data from MySQL `qitech.roles` to Postgres `public.roles`.
 
-Set connection details via environment variables or edit the defaults below.
+This migration saves the MySQL id to external_id in the new Postgres table.
 """
 import os
 import sys
 import logging
-from datetime import datetime, timezone
 from typing import Dict, List, Any
 
 try:
@@ -16,12 +15,11 @@ try:
 except Exception as e:
     logging.error("Missing Python dependency: %s", e)
     logging.error("Install dependencies: pip install pymysql psycopg2-binary")
-    logging.error("Or create a virtualenv and run: pip install -r requirements.txt")
     sys.exit(1)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-# Configuration (prefer environment variables)
+# Config
 MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
 MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
 MYSQL_USER = os.getenv("MYSQL_USER", "root")
@@ -34,14 +32,13 @@ PG_USER = os.getenv("PG_USER", "pgadmin")
 PG_PASSWORD = os.getenv("PG_PASSWORD", "2fac05f6ac12e581bc2aeb8bc188deac")
 PG_DB = os.getenv("PG_DB", "qi-tech")
 
-# Batch size for fetching/inserting
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
 
 
 def fetch_mysql_rows(connection, offset: int, limit: int) -> List[Dict[str, Any]]:
     with connection.cursor() as cur:
         cur.execute(
-            "SELECT isid, name, created_at, updated_at FROM dmd_ingredients ORDER BY isid LIMIT %s OFFSET %s",
+            "SELECT id, name, created_at, updated_at FROM roles ORDER BY id LIMIT %s OFFSET %s",
             (limit, offset),
         )
         return cur.fetchall()
@@ -49,7 +46,7 @@ def fetch_mysql_rows(connection, offset: int, limit: int) -> List[Dict[str, Any]
 
 def get_existing_external_ids(pg_conn) -> set:
     with pg_conn.cursor() as cur:
-        cur.execute("SELECT external_id FROM public.dmd_ingredient_substances WHERE external_id IS NOT NULL")
+        cur.execute("SELECT external_id FROM public.roles WHERE external_id IS NOT NULL")
         return {row[0] for row in cur.fetchall()}
 
 
@@ -63,54 +60,55 @@ def parse_int(value: Any) -> int | None:
 
 
 def transform_row(row: Dict[str, Any]) -> Dict[str, Any]:
-    external_id = parse_int(row.get("isid"))
-    if external_id is None:
-        raise ValueError(f"Missing or invalid isid value for external_id: {row.get('isid')!r}")
+    name = row.get("name")
+    if not name:
+        raise ValueError(f"Missing name in row: {row!r}")
 
-    created_at = row.get("created_at") or datetime.now(timezone.utc)
+    external_id = parse_int(row.get("id"))
+    if external_id is None:
+        raise ValueError(f"Missing or invalid id in row: {row!r}")
+
+    created_at = row.get("created_at")
+    updated_at = row.get("updated_at")
 
     return {
-        "external_id": external_id,
-        "new_id": None,
-        "release_version": "migrated",
-        "invalid": False,
-        "name": row.get("name"),
-        "created_at": created_at,
+        'external_id': external_id,
+        'name': name,
+        'created_at': created_at,
+        'updated_at': updated_at,
     }
 
 
 def insert_batch(pg_conn, rows: List[Dict[str, Any]]):
     if not rows:
-        return
+        return 0
     cols = [
-        "external_id",
-        "new_id",
-        "release_version",
-        "invalid",
-        '"name"',
-        "created_at",
+        'external_id',
+        'name',
+        'created_at',
+        'updated_at',
     ]
     template = "(%s)" % ",".join(["%s"] * len(cols))
     values = [
         (
-            r["external_id"],
-            r["new_id"],
-            r["release_version"],
-            r["invalid"],
-            r["name"],
-            r["created_at"],
+            r['external_id'],
+            r['name'],
+            r['created_at'],
+            r['updated_at'],
         )
         for r in rows
     ]
 
     sql = (
-        "INSERT INTO public.dmd_ingredient_substances (" +
-        ",".join(cols) + ") VALUES %s"
+        "INSERT INTO public.roles (" +
+        ",".join(cols) + ") VALUES %s ON CONFLICT (name) DO UPDATE SET external_id = COALESCE(public.roles.external_id, EXCLUDED.external_id)"
     )
 
     with pg_conn.cursor() as cur:
         psycopg2.extras.execute_values(cur, sql, values, template=template)
     pg_conn.commit()
+
+    return len(rows)
 
 
 def main(dry_run: bool = False):
@@ -130,7 +128,7 @@ def main(dry_run: bool = False):
 
     try:
         existing = get_existing_external_ids(pg_conn)
-        logging.info("Found %d existing external_id values in Postgres", len(existing))
+        logging.info("Found %d existing external_ids in Postgres", len(existing))
 
         offset = 0
         total_inserted = 0
@@ -141,18 +139,20 @@ def main(dry_run: bool = False):
 
             transformed = []
             for r in rows:
-                t = transform_row(r)
-                if t["external_id"] in existing:
+                try:
+                    t = transform_row(r)
+                    if t['external_id'] not in existing:
+                        transformed.append(t)
+                except ValueError as e:
+                    logging.warning("Skipping row due to error: %s", e)
                     continue
-                transformed.append(t)
-                existing.add(t["external_id"])
 
             if dry_run:
-                logging.info("Dry-run: would insert %d rows for offset %d", len(transformed), offset)
+                logging.info("Dry-run: would insert %d roles for offset %d", len(transformed), offset)
             else:
-                insert_batch(pg_conn, transformed)
-                total_inserted += len(transformed)
-                logging.info("Inserted %d rows (offset %d)", len(transformed), offset)
+                inserted = insert_batch(pg_conn, transformed)
+                total_inserted += inserted
+                logging.info("Inserted %d roles (offset %d)", inserted, offset)
 
             offset += BATCH_SIZE
 

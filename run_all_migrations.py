@@ -19,32 +19,56 @@ def normalize_script_key(script_path: Path, base_dir: Path) -> str:
 
 def build_dependency_map() -> dict[str, set[str]]:
     return {
+        # Base/Independent Tables
+        "OLD.roles": set(),
         "OLD.head_offices": set(),
-        "OLD.user_type_categories": {"OLD.head_offices"},
+        "OLD.users": set(),
         "OLD.location_types": set(),
         "OLD.location_regulatory_bodies": set(),
-        "OLD.users": set(),
-        "OLD.location": {"OLD.head_offices", "OLD.location_types", "OLD.location_regulatory_bodies"},
-        "OLD.head_office_users": {"OLD.head_offices", "OLD.users"},
-        "OLD.head_office_user_timings": {"OLD.head_office_users"},
-        "OLD.head_office_holidays": {"OLD.head_office_users"},
-        "OLD.head_office_cases": {"OLD.head_office_users"},
-        "OLD.dmd_vtms": set(),
-        "OLD.dmd_vmp": {"OLD.dmd_vtms"},
-        "OLD.dmd_vmp_drug_forms": {"OLD.dmd_vmp"},
-        "OLD.dmd_vmp_routes": {"OLD.dmd_vmp"},
-        "OLD.dmd_vmp_control_drug_info": {"OLD.dmd_vmp"},
-        "OLD.dmd_ingredients": set(),
-        "OLD.dmd_vmp_ingredients": {"OLD.dmd_vmp", "OLD.dmd_ingredients"},
-        "OLD.dmd_legal_category": set(),
+        
+        # DMD Lookup Tables (Independent)
+        "OLD.dmd_amps": set(),
         "OLD.dmd_control_drug_categories": set(),
         "OLD.dmd_drug_forms": set(),
+        "OLD.dmd_ingredients": set(),
+        "OLD.dmd_legal_category": set(),
         "OLD.dmd_routes": set(),
         "OLD.dmd_suppliers": set(),
         "OLD.dmd_unit_of_measures": set(),
+        "OLD.dmd_vtms": set(),
+        
+        # AMP (Independent - no dependencies on VMP)
+        "OLD.amp": set(),
+        
+        # DMD VMP Chain (depends on vtms)
+        "OLD.dmd_vmp": {"OLD.dmd_vtms"},
         "OLD.dmd_vmpps": {"OLD.dmd_vmp"},
-        "OLD.amp": {"OLD.dmd_vmp", "OLD.dmd_vmpps"},
-        "OLD.dmd_ampps": {"OLD.amp", "OLD.dmd_vmpps"},
+        "OLD.dmd_vmp_drug_forms": {"OLD.dmd_vmp"},
+        "OLD.dmd_vmp_routes": {"OLD.dmd_vmp"},
+        "OLD.dmd_vmp_control_drug_info": {"OLD.dmd_vmp"},
+        "OLD.dmd_vmp_ingredients": {"OLD.dmd_vmp", "OLD.dmd_ingredients"},
+        
+        # AMP Packs (depends on amp only)
+        "OLD.dmd_ampps": {"OLD.amp"},
+        
+        # User and Company Relationships
+        "OLD.head_office_users": {"OLD.head_offices", "OLD.users"},
+        "OLD.user_jobs": {"OLD.head_offices"},
+        "OLD.user_type_categories": {"OLD.head_offices"},
+        
+        # Locations
+        "OLD.location": {"OLD.head_offices", "OLD.location_types", "OLD.location_regulatory_bodies"},
+        
+        # Cases and Timeline
+        "OLD.head_office_cases": {"OLD.head_offices", "OLD.head_office_users"},
+        "OLD.head_office_user_timings": {"OLD.head_office_users"},
+        "OLD.head_office_holidays": {"OLD.head_offices", "OLD.users", "OLD.head_office_users"},
+        
+        # User Type Assignments
+        "OLD.user_type_cat_assigns": {"OLD.user_jobs", "OLD.user_type_categories"},
+        
+        # Case Handler Users (depends on case_handler_users table being created by head_office_cases)
+        "OLD.case_handler_users": {"OLD.head_office_users"},
     }
 
 

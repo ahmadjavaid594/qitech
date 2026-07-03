@@ -32,15 +32,11 @@ MYSQL_DB = os.getenv("MYSQL_DB", "qitech")
 
 PG_HOST = os.getenv("PG_HOST", "qitech-pg-test-17943.postgres.database.azure.com")
 PG_PORT = int(os.getenv("PG_PORT", "5432"))
-PG_USER = os.getenv("PG_USER", "zuhair")
-PG_PASSWORD = os.getenv("PG_PASSWORD", "a47faf48e403c78d8729cbd2bf7181cf")
+PG_USER = os.getenv("PG_USER", "pgadmin")
+PG_PASSWORD = os.getenv("PG_PASSWORD", "2fac05f6ac12e581bc2aeb8bc188deac")
 PG_DB = os.getenv("PG_DB", "qi-tech")
 
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
-
-HEAD_OFFICE_OVERRIDES = {
-    36: "23b59048-99aa-4609-9fd4-2d4e09bd71cb",  # Qitech
-}
 
 
 def fetch_mysql_rows(connection, offset: int, limit: int) -> List[Dict[str, Any]]:
@@ -92,16 +88,14 @@ def transform_row(row: Dict[str, Any], company_external_map: Dict[int, str], com
     if head_office_id is None:
         raise ValueError(f"Missing or invalid head_office_id for row: {row!r}")
 
-    company_id = HEAD_OFFICE_OVERRIDES.get(head_office_id)
-    if company_id is None:
-        # First, try matching by companies.external_id (preferred)
-        company_id = company_external_map.get(head_office_id)
+    # First, try matching by companies.external_id (preferred)
+    company_id = company_external_map.get(head_office_id)
     if company_id is None:
         # Fallback to the migrated placeholder email used during companies import
         expected_email = f"migrated+{head_office_id}@example.invalid"
         company_id = company_email_map.get(expected_email)
     if company_id is None:
-        raise ValueError(f"No company found for head_office_id {head_office_id} (tried external_id and email migrated+{head_office_id}@example.invalid)")
+        raise ValueError(f"No company found for head_office_id {head_office_id} (tried external_id={head_office_id} and email migrated+{head_office_id}@example.invalid)")
 
     return {
         "company_id": company_id,

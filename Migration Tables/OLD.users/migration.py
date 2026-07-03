@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Migrate data from MySQL `qitech.users` to Postgres `public.users`.
 
-This migration requires a target role UUID supplied via `DEFAULT_USER_ROLE_ID`.
+This migration dynamically fetches role UUIDs from the Postgres roles table by:
+1. Looking up user_id in the MySQL user_roles table to get role_id
+2. Matching role_id to the roles table external_id column to get the actual UUID
 """
 import os
 import sys
@@ -29,11 +31,10 @@ MYSQL_DB = os.getenv("MYSQL_DB", "qitech")
 
 PG_HOST = os.getenv("PG_HOST", "qitech-pg-test-17943.postgres.database.azure.com")
 PG_PORT = int(os.getenv("PG_PORT", "5432"))
-PG_USER = os.getenv("PG_USER", "zuhair")
-PG_PASSWORD = os.getenv("PG_PASSWORD", "a47faf48e403c78d8729cbd2bf7181cf")
+PG_USER = os.getenv("PG_USER", "pgadmin")
+PG_PASSWORD = os.getenv("PG_PASSWORD", "2fac05f6ac12e581bc2aeb8bc188deac")
 PG_DB = os.getenv("PG_DB", "qi-tech")
 
-DEFAULT_USER_ROLE_ID = 'c07a186f-0248-44b9-bca6-cb7f46f903ac';
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
 
 
@@ -52,6 +53,35 @@ def get_existing_emails(pg_conn) -> set:
         return {row[0] for row in cur.fetchall()}
 
 
+def build_role_map(pg_conn) -> Dict[int, str]:
+    """Build a map from role external_id (int) to role uuid (str)."""
+    role_map: Dict[int, str] = {}
+    with pg_conn.cursor() as cur:
+        cur.execute("SELECT id, external_id FROM public.roles WHERE external_id IS NOT NULL")
+        for row in cur.fetchall():
+            role_uuid = row[0]
+            external_id = row[1]
+            try:
+                role_map[int(external_id)] = role_uuid
+            except (TypeError, ValueError):
+                pass
+    return role_map
+
+
+def build_user_roles_map(connection) -> Dict[int, int]:
+    """Build a map from user_id (int) to role_id (int) from user_roles table."""
+    user_roles_map: Dict[int, int] = {}
+    with connection.cursor() as cur:
+        cur.execute("SELECT user_id, role_id FROM user_roles")
+        for row in cur.fetchall():
+            user_id = row.get("user_id")
+            role_id = row.get("role_id")
+            # Take the first role if user has multiple roles
+            if user_id not in user_roles_map:
+                user_roles_map[user_id] = role_id
+    return user_roles_map
+
+
 def parse_bool(value: Any) -> bool:
     if value in (1, "1", True, "t", "true", "True"):
         return True
@@ -67,21 +97,32 @@ def parse_int(value: Any) -> int | None:
         return None
 
 
-def transform_row(row: Dict[str, Any]) -> Dict[str, Any]:
-    if DEFAULT_USER_ROLE_ID is None:
-        raise RuntimeError("DEFAULT_USER_ROLE_ID environment variable must be set for user migration")
-
+def transform_row(row: Dict[str, Any], role_map: Dict[int, str], user_roles_map: Dict[int, int]) -> Dict[str, Any]:
     first_name = row.get("first_name")
     surname = row.get("surname")
     email = row.get("email")
     password_hash = row.get("password")
+    user_id = parse_int(row.get("id"))
 
     if not first_name or not surname or not email:
         raise ValueError(f"Missing required user fields in row: {row!r}")
 
+    if user_id is None:
+        raise ValueError(f"Missing or invalid user id in row: {row!r}")
+
+    # Look up role_id from user_roles table using user_id
+    mysql_role_id = user_roles_map.get(user_id)
+    if mysql_role_id is None:
+        raise ValueError(f"No role found for user_id {user_id} (check user_roles table)")
+
+    # Look up the actual role UUID from roles table using external_id mapping
+    role_uuid = role_map.get(mysql_role_id)
+    if role_uuid is None:
+        raise ValueError(f"No role found for role_id {mysql_role_id} (check roles table has external_id set)")
+
     created_at = row.get("created_at") or datetime.now(timezone.utc)
     updated_at = row.get("updated_at") or datetime.now(timezone.utc)
-    external_id = parse_int(row.get("id"))
+    external_id = user_id
     deleted_at = created_at if parse_bool(row.get("is_archived")) else None
 
     return {
@@ -100,7 +141,7 @@ def transform_row(row: Dict[str, Any]) -> Dict[str, Any]:
         'photo': None,
         '"status"': 'active',
         'status_comment': None,
-        'role_id': DEFAULT_USER_ROLE_ID,
+        'role_id': role_uuid,
         'created_at': created_at,
         'updated_at': updated_at,
         'deleted_at': deleted_at,
@@ -171,9 +212,6 @@ def insert_batch(pg_conn, rows: List[Dict[str, Any]]):
 
 
 def main(dry_run: bool = False):
-    if DEFAULT_USER_ROLE_ID is None:
-        raise RuntimeError("DEFAULT_USER_ROLE_ID environment variable must be set for user migration")
-
     logging.info("Connecting to MySQL %s:%s/%s", MYSQL_HOST, MYSQL_PORT, MYSQL_DB)
     mysql_conn = pymysql.connect(
         host=MYSQL_HOST,
@@ -192,6 +230,12 @@ def main(dry_run: bool = False):
         existing = get_existing_emails(pg_conn)
         logging.info("Found %d existing emails in Postgres", len(existing))
 
+        role_map = build_role_map(pg_conn)
+        logging.info("Loaded %d roles from Postgres", len(role_map))
+
+        user_roles_map = build_user_roles_map(mysql_conn)
+        logging.info("Loaded %d user-role mappings from MySQL", len(user_roles_map))
+
         offset = 0
         total_inserted = 0
         while True:
@@ -201,11 +245,15 @@ def main(dry_run: bool = False):
 
             transformed = []
             for r in rows:
-                t = transform_row(r)
-                if t["email"] in existing:
+                try:
+                    t = transform_row(r, role_map, user_roles_map)
+                    if t["email"] in existing:
+                        continue
+                    transformed.append(t)
+                    existing.add(t["email"])
+                except ValueError as e:
+                    logging.warning("Skipping row due to error: %s", e)
                     continue
-                transformed.append(t)
-                existing.add(t["email"])
 
             if dry_run:
                 logging.info("Dry-run: would insert %d rows for offset %d", len(transformed), offset)

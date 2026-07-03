@@ -23,3 +23,9 @@ ALTER TABLE public.regulatory_bodies
 
 ALTER TABLE public.sites
     ADD COLUMN IF NOT EXISTS external_id int8 NULL;
+
+ALTER TABLE public.cases
+    ADD COLUMN IF NOT EXISTS external_id int8 NULL;
+
+ALTER TABLE public.roles
+    ADD COLUMN IF NOT EXISTS external_id int8 NULL;
