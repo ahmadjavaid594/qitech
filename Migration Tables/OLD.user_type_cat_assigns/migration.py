@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Migrate data from MySQL `qitech.user_type_categories` to Postgres `public.categories`.
+"""Migrate data from MySQL `qitech.user_type_cat_assigns` to Postgres `public.user_type_categories`.
 
-This migration expects `public.companies` to have been populated already. It maps
-`head_office_id` -> `company_id` by looking up the company email generated during the
-`head_offices` migration (migrated+<id>@example.invalid), and stores rows as category
-records of type `user_type`.
+This migration resolves source `user_type_id` via `public.user_types.external_id`
+and resolves source `user_type_category_id` to `public.categories.id` using the
+category name, head office/company mapping, and type `user_type`.
 """
 import os
 import sys
@@ -46,7 +45,10 @@ HEAD_OFFICE_OVERRIDES = {
 def fetch_mysql_rows(connection, offset: int, limit: int) -> List[Dict[str, Any]]:
     with connection.cursor() as cur:
         cur.execute(
-            "SELECT id, name, head_office_id FROM user_type_categories ORDER BY id LIMIT %s OFFSET %s",
+            "SELECT a.id, a.user_type_id, a.user_type_category_id, c.name AS category_name, c.head_office_id "
+            "FROM user_type_cat_assigns a "
+            "JOIN user_type_categories c ON c.id = a.user_type_category_id "
+            "ORDER BY a.id LIMIT %s OFFSET %s",
             (limit, offset),
         )
         return cur.fetchall()
@@ -74,6 +76,22 @@ def build_company_maps(pg_conn) -> Tuple[Dict[int, str], Dict[str, str]]:
     return external_map, email_map
 
 
+def build_target_maps(pg_conn) -> Tuple[Dict[int, str], Dict[tuple, str]]:
+    user_type_map: Dict[int, str] = {}
+    category_map: Dict[tuple, str] = {}
+    with pg_conn.cursor() as cur:
+        cur.execute("SELECT id, external_id FROM public.user_types WHERE external_id IS NOT NULL")
+        for row in cur.fetchall():
+            if row[1] is not None:
+                user_type_map[int(row[1])] = row[0]
+
+        cur.execute("SELECT id, company_id, \"name\", type FROM public.categories")
+        for row in cur.fetchall():
+            category_map[(row[1], row[2], row[3])] = row[0]
+
+    return user_type_map, category_map
+
+
 def parse_int(value: Any) -> int | None:
     if value is None:
         return None
@@ -83,82 +101,78 @@ def parse_int(value: Any) -> int | None:
         return None
 
 
-def transform_row(row: Dict[str, Any], company_external_map: Dict[int, str], company_email_map: Dict[str, str]) -> Dict[str, Any]:
-    name = row.get("name")
-    if not name:
-        raise ValueError(f"Missing name in row: {row!r}")
+def transform_row(
+    row: Dict[str, Any],
+    company_external_map: Dict[int, str],
+    company_email_map: Dict[str, str],
+    user_type_map: Dict[int, str],
+    category_map: Dict[tuple, str],
+) -> Dict[str, Any]:
+    user_type_id = parse_int(row.get("user_type_id"))
+    if user_type_id is None:
+        raise ValueError(f"Missing or invalid user_type_id for row: {row!r}")
 
-    head_office_id = parse_int(row.get("head_office_id"))
-    if head_office_id is None:
+    category_name = row.get("category_name")
+    if not category_name:
+        raise ValueError(f"Missing category_name for row: {row!r}")
+
+    headoffice_id = parse_int(row.get("head_office_id"))
+    if headoffice_id is None:
         raise ValueError(f"Missing or invalid head_office_id for row: {row!r}")
 
-    company_id = HEAD_OFFICE_OVERRIDES.get(head_office_id)
+    company_id = HEAD_OFFICE_OVERRIDES.get(headoffice_id)
     if company_id is None:
-        # First, try matching by companies.external_id (preferred)
-        company_id = company_external_map.get(head_office_id)
+        company_id = company_external_map.get(headoffice_id)
     if company_id is None:
-        # Fallback to the migrated placeholder email used during companies import
-        expected_email = f"migrated+{head_office_id}@example.invalid"
+        expected_email = f"migrated+{headoffice_id}@example.invalid"
         company_id = company_email_map.get(expected_email)
     if company_id is None:
-        raise ValueError(f"No company found for head_office_id {head_office_id} (tried external_id and email migrated+{head_office_id}@example.invalid)")
+        raise ValueError(
+            f"No company found for head_office_id {headoffice_id} "
+            f"(tried external_id and email migrated+{headoffice_id}@example.invalid)"
+        )
+
+    target_user_type_id = user_type_map.get(user_type_id)
+    if target_user_type_id is None:
+        raise ValueError(f"No target user_type found for source user_type_id {user_type_id}")
+
+    category_id = category_map.get((company_id, category_name, "user_type"))
+    if category_id is None:
+        raise ValueError(
+            f"No target category found for name {category_name!r} and company_id {company_id}"
+        )
 
     return {
-        "company_id": company_id,
-        '"name"': name,
-        'type': 'user_type',
-        'position': 0,
+        "user_type_id": target_user_type_id,
+        "category_id": category_id,
     }
 
 
 def insert_batch(pg_conn, rows: List[Dict[str, Any]]):
     if not rows:
         return
-    # Deduplicate rows that would conflict on (company_id, name) within the same batch.
+
     uniq: Dict[tuple, Dict[str, Any]] = {}
     for r in rows:
-        key = (r["company_id"], r['"name"'])
+        key = (r["user_type_id"], r["category_id"])
         if key not in uniq:
             uniq[key] = r.copy()
-            continue
-        existing = uniq[key]
-        # Prefer existing external_id, otherwise take new
-        if existing.get("external_id") is None and r.get("external_id") is not None:
-            existing["external_id"] = r.get("external_id")
-        # created_at: earliest
-        if existing.get("created_at") and r.get("created_at"):
-            existing["created_at"] = min(existing["created_at"], r["created_at"])
-        elif r.get("created_at"):
-            existing["created_at"] = r["created_at"]
-        # updated_at: latest
-        if existing.get("updated_at") and r.get("updated_at"):
-            existing["updated_at"] = max(existing["updated_at"], r["updated_at"])
-        elif r.get("updated_at"):
-            existing["updated_at"] = r["updated_at"]
-        # boolean flags: keep True if any row has True
-        for bool_field in ['"isSystemGenerated"', 'enabled', 'allow_multiple_sub_types', 'sub_type_selection_required', 'has_regulatory_body']:
-            existing[bool_field] = bool(existing.get(bool_field)) or bool(r.get(bool_field))
-        # description: prefer existing, else new
-        if not existing.get("description") and r.get("description"):
-            existing["description"] = r.get("description")
 
     deduped_rows = list(uniq.values())
 
-    cols = ["company_id", '"name"', 'type', 'position']
+    cols = ["user_type_id", "category_id"]
     template = "(%s)" % ",".join(["%s"] * len(cols))
     values = [
         (
-            r["company_id"],
-            r['"name"'],
-            r["type"],
-            r["position"],
+            r["user_type_id"],
+            r["category_id"],
         )
         for r in deduped_rows
     ]
 
     sql = (
-        "INSERT INTO public.categories (" +
-        ",".join(cols) + ") VALUES %s ON CONFLICT (company_id, type, \"name\") DO UPDATE SET position = EXCLUDED.position"
+        "INSERT INTO public.user_type_categories (" +
+        ",".join(cols) + ") VALUES %s ON CONFLICT (user_type_id, category_id) DO NOTHING"
     )
 
     with pg_conn.cursor() as cur:
@@ -185,7 +199,14 @@ def main(dry_run: bool = False):
 
     try:
         company_external_map, company_email_map = build_company_maps(pg_conn)
-        logging.info("Loaded %d companies with external_id and %d emails from Postgres", len(company_external_map), len(company_email_map))
+        user_type_map, category_map = build_target_maps(pg_conn)
+        logging.info(
+            "Loaded %d companies with external_id, %d emails, %d user types, and %d categories from Postgres",
+            len(company_external_map),
+            len(company_email_map),
+            len(user_type_map),
+            len(category_map),
+        )
 
         offset = 0
         total_inserted = 0
@@ -197,7 +218,7 @@ def main(dry_run: bool = False):
             transformed = []
             for r in rows:
                 try:
-                    t = transform_row(r, company_external_map, company_email_map)
+                    t = transform_row(r, company_external_map, company_email_map, user_type_map, category_map)
                 except ValueError as e:
                     logging.warning("Skipping row due to error: %s", e)
                     continue

@@ -276,6 +276,8 @@ def migrate_cases_and_instances(mysql_conn, pg_conn, company_map, company_user_m
         workflow_inserts = []
         case_status_updates = []
         investigator_group_inserts = []
+        case_external_id_updates = []
+        case_rows = []
         
         for c in cases:
             ho_id = str(c['head_office_id'])
@@ -294,13 +296,6 @@ def migrate_cases_and_instances(mysql_conn, pg_conn, company_map, company_user_m
                     
             if not template_id: continue
                 
-            new_case_id = str(uuid.uuid4())
-            new_status_id = str(uuid.uuid4())
-            new_workflow_id = str(uuid.uuid4())
-            new_investigator_group_id = str(uuid.uuid4())
-            
-            case_mapping[c['id']] = (new_case_id, new_workflow_id, new_investigator_group_id)
-            
             title = c['form_name'] or c['description'] or f"Case {c['id']}"
             identifier = f"CASE-{c['id']}"
             case_type = c['incident_type'] or 'general'
@@ -309,45 +304,105 @@ def migrate_cases_and_instances(mysql_conn, pg_conn, company_map, company_user_m
             created_at = c['created_at'] or datetime.now(timezone.utc)
             updated_at = c['updated_at'] or datetime.now(timezone.utc)
             deleted_at = updated_at if c['isArchived'] else None
+
+            case_rows.append({
+                'source_id': c['id'],
+                'company_id': company_id,
+                'template_id': template_id,
+                'title': title,
+                'identifier': identifier,
+                'case_type': case_type,
+                'status_key': status_key,
+                'created_at': created_at,
+                'updated_at': updated_at,
+                'deleted_at': deleted_at,
+                'requires_final_approval': bool(c['requires_final_approval']),
+                'case_closed': bool(c['case_closed']),
+                'description': c['description'],
+            })
+
+        existing_case_lookup = {}
+        if case_rows:
+            identifiers = [row['identifier'] for row in case_rows]
+            placeholders = ', '.join(['%s'] * len(identifiers))
+            with pg_conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    SELECT c.identifier, c.id, wf.id AS workflow_id, ig.id AS group_id
+                    FROM public.cases c
+                    LEFT JOIN public.case_workflows wf ON wf.case_id = c.id
+                    LEFT JOIN public.case_investigator_groups ig ON ig.case_id = c.id
+                    WHERE c.identifier IN ({placeholders})
+                    """,
+                    identifiers,
+                )
+                existing_case_lookup = {
+                    str(row[0]): (str(row[1]), str(row[2]) if row[2] else None, str(row[3]) if row[3] else None)
+                    for row in cur.fetchall()
+                }
+
+        for case_row in case_rows:
+            existing_case_state = existing_case_lookup.get(case_row['identifier'])
+            if existing_case_state:
+                existing_case_id, existing_workflow_id, existing_group_id = existing_case_state
+                case_mapping[case_row['source_id']] = (existing_case_id, existing_workflow_id, existing_group_id)
+                case_external_id_updates.append((case_row['source_id'], case_row['updated_at'], existing_case_id))
+                continue
+
+            new_case_id = str(uuid.uuid4())
+            new_status_id = str(uuid.uuid4())
+            new_workflow_id = str(uuid.uuid4())
+            new_investigator_group_id = str(uuid.uuid4())
+            
+            case_mapping[case_row['source_id']] = (new_case_id, new_workflow_id, new_investigator_group_id)
             
             case_inserts.append((
-                new_case_id, company_id, template_id, title, identifier, case_type, None, 
-                False, False, bool(c['requires_final_approval']), True,
-                created_at, updated_at, deleted_at
+                new_case_id, case_row['company_id'], case_row['template_id'], case_row['title'], case_row['identifier'],
+                case_row['case_type'], case_row['source_id'], None,
+                False, False, case_row['requires_final_approval'], True,
+                case_row['created_at'], case_row['updated_at'], case_row['deleted_at']
             ))
             
             status_inserts.append((
-                new_status_id, new_case_id, None, status_key, status_key.replace('_', ' ').title(),
-                False, 0, created_at, updated_at
+                new_status_id, new_case_id, None, case_row['status_key'], case_row['status_key'].replace('_', ' ').title(),
+                False, 0, case_row['created_at'], case_row['updated_at']
             ))
             case_status_updates.append((new_status_id, new_case_id))
             
-            if c['case_closed']:
+            if case_row['case_closed']:
                 closing_inserts.append((
                     str(uuid.uuid4()), new_case_id, 'Closed',
-                    c['description'] or 'Migrated as closed', updated_at, updated_at
+                    case_row['description'] or 'Migrated as closed', case_row['updated_at'], case_row['updated_at']
                 ))
                 
-            template_workflow_id = template_to_workflow_map.get(template_id)
+            template_workflow_id = template_to_workflow_map.get(case_row['template_id'])
             workflow_inserts.append((
-                new_workflow_id, new_case_id, template_workflow_id, "Case Workflow", created_at, updated_at
+                new_workflow_id, new_case_id, template_workflow_id, "Case Workflow", case_row['created_at'], case_row['updated_at']
             ))
             
             investigator_group_inserts.append((
-                new_investigator_group_id, new_case_id, "Legacy Handlers", created_at
+                new_investigator_group_id, new_case_id, "Legacy Handlers", case_row['created_at']
             ))
             
-        if case_inserts:
+        if case_inserts or case_external_id_updates:
             with pg_conn.cursor() as p_cur:
+                if case_external_id_updates:
+                    psycopg2.extras.execute_batch(
+                        p_cur,
+                        "UPDATE public.cases SET external_id = %s, updated_at = %s WHERE id = %s",
+                        case_external_id_updates
+                    )
+
                 # Step 1: Insert Cases (status_id = NULL to bypass circular FK)
                 psycopg2.extras.execute_values(
                     p_cur,
                     """INSERT INTO public.cases (
-                        id, company_id, template_id, title, identifier, case_type, status_id,
+                        id, company_id, template_id, title, identifier, case_type, external_id, status_id,
                         can_all_users_access, ask_case_handler_to_create_case_name,
                         requires_final_approval_before_close, requires_closing_case_reason,
                         created_at, updated_at, deleted_at
-                    ) VALUES %s ON CONFLICT (id) DO NOTHING""", case_inserts
+                    ) VALUES %s
+                    ON CONFLICT (id) DO UPDATE SET external_id = EXCLUDED.external_id""", case_inserts
                 )
                 
                 # Step 2: Insert Statuses

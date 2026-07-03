@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Migrate data from MySQL `qitech.user_type_categories` to Postgres `public.categories`.
+"""Migrate data from MySQL `qitech.user_jobs` to Postgres `public.user_types`.
 
 This migration expects `public.companies` to have been populated already. It maps
-`head_office_id` -> `company_id` by looking up the company email generated during the
-`head_offices` migration (migrated+<id>@example.invalid), and stores rows as category
-records of type `user_type`.
+`headoffice_id` -> `company_id` by looking up the company email generated during the
+`head_offices` migration (migrated+<id>@example.invalid).
 """
 import os
 import sys
@@ -38,15 +37,11 @@ PG_DB = os.getenv("PG_DB", "qi-tech")
 
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
 
-HEAD_OFFICE_OVERRIDES = {
-    36: "23b59048-99aa-4609-9fd4-2d4e09bd71cb",  # Qitech
-}
-
 
 def fetch_mysql_rows(connection, offset: int, limit: int) -> List[Dict[str, Any]]:
     with connection.cursor() as cur:
         cur.execute(
-            "SELECT id, name, head_office_id FROM user_type_categories ORDER BY id LIMIT %s OFFSET %s",
+            "SELECT id, job, job_description, headoffice_id, created_at, updated_at FROM user_jobs ORDER BY id LIMIT %s OFFSET %s",
             (limit, offset),
         )
         return cur.fetchall()
@@ -84,30 +79,48 @@ def parse_int(value: Any) -> int | None:
 
 
 def transform_row(row: Dict[str, Any], company_external_map: Dict[int, str], company_email_map: Dict[str, str]) -> Dict[str, Any]:
-    name = row.get("name")
-    if not name:
-        raise ValueError(f"Missing name in row: {row!r}")
+    job_name = row.get("job")
+    if not job_name:
+        raise ValueError(f"Missing job name in row: {row!r}")
 
-    head_office_id = parse_int(row.get("head_office_id"))
-    if head_office_id is None:
-        raise ValueError(f"Missing or invalid head_office_id for row: {row!r}")
+    headoffice_id = parse_int(row.get("headoffice_id"))
+    source_id = parse_int(row.get("id"))
+    company_id: str | None = None
 
-    company_id = HEAD_OFFICE_OVERRIDES.get(head_office_id)
-    if company_id is None:
-        # First, try matching by companies.external_id (preferred)
-        company_id = company_external_map.get(head_office_id)
-    if company_id is None:
-        # Fallback to the migrated placeholder email used during companies import
-        expected_email = f"migrated+{head_office_id}@example.invalid"
+    for candidate_id in [headoffice_id, source_id]:
+        if candidate_id is None:
+            continue
+
+        company_id = company_external_map.get(candidate_id)
+        if company_id is not None:
+            break
+
+        expected_email = f"migrated+{candidate_id}@example.invalid"
         company_id = company_email_map.get(expected_email)
+        if company_id is not None:
+            break
+
     if company_id is None:
-        raise ValueError(f"No company found for head_office_id {head_office_id} (tried external_id and email migrated+{head_office_id}@example.invalid)")
+        if headoffice_id is None:
+            raise ValueError(f"No company found for row id {source_id} (no headoffice_id provided)")
+        raise ValueError(f"No company found for headoffice_id {headoffice_id} (tried external_id and email migrated+{headoffice_id}@example.invalid)")
+
+    created_at = row.get("created_at") or datetime.now(timezone.utc)
+    updated_at = row.get("updated_at") or datetime.now(timezone.utc)
 
     return {
+        "external_id": parse_int(row.get("id")),
         "company_id": company_id,
-        '"name"': name,
-        'type': 'user_type',
-        'position': 0,
+        '"name"': job_name,
+        "description": row.get("job_description"),
+        '"isSystemGenerated"': False,
+        "enabled": True,
+        "allow_multiple_sub_types": False,
+        "sub_type_selection_required": False,
+        "has_regulatory_body": False,
+        "assignment_mode": 'open',
+        "created_at": created_at,
+        "updated_at": updated_at,
     }
 
 
@@ -144,21 +157,38 @@ def insert_batch(pg_conn, rows: List[Dict[str, Any]]):
 
     deduped_rows = list(uniq.values())
 
-    cols = ["company_id", '"name"', 'type', 'position']
+    cols = ["external_id", "company_id", '"name"', "description", '"isSystemGenerated"', "enabled", "allow_multiple_sub_types", "sub_type_selection_required", "has_regulatory_body", "assignment_mode", "created_at", "updated_at"]
     template = "(%s)" % ",".join(["%s"] * len(cols))
     values = [
         (
+            r.get("external_id"),
             r["company_id"],
             r['"name"'],
-            r["type"],
-            r["position"],
+            r["description"],
+            r['"isSystemGenerated"'],
+            r["enabled"],
+            r["allow_multiple_sub_types"],
+            r["sub_type_selection_required"],
+            r["has_regulatory_body"],
+            r["assignment_mode"],
+            r["created_at"],
+            r["updated_at"],
         )
         for r in deduped_rows
     ]
 
     sql = (
-        "INSERT INTO public.categories (" +
-        ",".join(cols) + ") VALUES %s ON CONFLICT (company_id, type, \"name\") DO UPDATE SET position = EXCLUDED.position"
+        "INSERT INTO public.user_types (" +
+        ",".join(cols) + ") VALUES %s ON CONFLICT (company_id, \"name\") DO UPDATE SET "
+        "external_id = COALESCE(user_types.external_id, EXCLUDED.external_id), "
+        "description = EXCLUDED.description, "
+        "\"isSystemGenerated\" = EXCLUDED.\"isSystemGenerated\", "
+        "enabled = EXCLUDED.enabled, "
+        "allow_multiple_sub_types = EXCLUDED.allow_multiple_sub_types, "
+        "sub_type_selection_required = EXCLUDED.sub_type_selection_required, "
+        "has_regulatory_body = EXCLUDED.has_regulatory_body, "
+        "assignment_mode = EXCLUDED.assignment_mode, "
+        "updated_at = EXCLUDED.updated_at"
     )
 
     with pg_conn.cursor() as cur:
