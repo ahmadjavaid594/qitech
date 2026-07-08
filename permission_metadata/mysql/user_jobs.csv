@@ -1,0 +1,21 @@
+id,module,job,example,job_description,subtype,created_at,updated_at,req_reg,headoffice_id,multiple_subtypes
+1,Administration,Accounting technician,,Accounting technicians handle day-to-day financial tasks for businesses.,,,,0,,0
+2,Administration,Admin assistant,"Office administrator, clerical assistant, administrative assistant","Admin assistants give support to businesses by organising meetings, typing documents, and updating records.",,,,0,,0
+3,Administration,Arts administrator,,"Arts administrators help manage exhibitions, staff, and buildings like museums.",,,,0,,0
+4,Administration,Assistant immigration officer,Immigration enforcement officer,Assistant immigration officers check if people have the right to visit or stay in the UK.,,,,0,,0
+5,Administration,Auditor,,Auditors check the financial records and procedures of organisations to ensure accuracy and efficiency.,,,,0,,0
+6,Administration,Bid writer,Bid coordinator,Bid writers prepare documents used to request contracts for providing services or applying for funding.,,,,0,,0
+7,Administration,Bilingual secretary,Bilingual executive assistant,Bilingual secretaries provide administrative services in multiple languages.,,,,0,,0
+8,Administration,Bookkeeper,Accounts clerk,Bookkeepers maintain financial records and assist in preparing accounts.,,,,0,,0
+9,Administration,Border Force officer,,Border Force officers enforce immigration and customs regulations at UK ports and airports.,,,,0,,0
+10,Administration,Car rental agent,"Car rental assistant, vehicle reservation agent",Car rental agents hire out vehicles to businesses and the public.,,,,0,,0
+11,Administration,Charity fundraiser,,Charity fundraisers organise events to encourage donations to causes or organisations.,,,,0,,0
+12,Administration,Civil Service administrative officer,,Civil Service administrative officers implement government policies and run services for the public.,,,,0,,0
+13,Administration,Civil Service executive officer,,"Civil Service executive officers work in government departments, helping develop policies.",,,,0,,0
+14,Administration,Credit controller,Debt collection agent,Credit controllers manage credit extended to customers and recover debts owed by individuals and businesses.,,,,0,,0
+15,Administration,Data entry clerk,"Audio typist, copy typist",Data entry clerks enter information into databases and create letters and reports.,,,,0,,0
+16,Administration,Diplomatic Service officer,,Diplomatic Service officers promote and protect British interests overseas.,,,,0,,0
+17,Administration,Estates officer,,Estates officers manage and maintain land and properties owned by public bodies or local councils.,,,,0,,0
+18,Administration,Farm secretary,"Agricultural business administrator, rural business administrator",Farm secretaries are responsible for the business side of farms.,,,,0,,0
+19,Administration,Finance officer,"Financial officer, finance clerk, treasurer",Finance officers track an organisation's income and control its spending.,,,,0,,0
+20,Administration,Financial services customer adviser,"Sales adviser, contact centre agent","Financial services customer advisers assist clients with banking, insurance, and investment services in contact centres.",,,,0,,0

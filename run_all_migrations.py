@@ -13,21 +13,84 @@ ROOT_DIR = Path(__file__).resolve().parent
 DEFAULT_BASE_DIR = ROOT_DIR / "Migration Tables"
 
 
+MIGRATION_ORDER = [
+    # Core identities / tenants
+    "OLD.roles",
+    "OLD.head_offices",
+    "OLD.users",
+    "OLD.location_regulatory_bodies",
+    "OLD.location_types",
+    "OLD.location",
+    "OLD.location_tags",
+    "OLD.head_office_users",
+    "OLD.user_jobs",
+    "OLD.user_type_categories",
+    "OLD.permissions",
+    "OLD.user_job_assigns",
+    # Forms and cases depend on companies/users/company_users being present.
+    "OLD.forms",
+    "OLD.head_office_cases",
+    "OLD.case_handler_users",
+    "OLD.head_office_user_timings",
+    "OLD.head_office_holidays",
+    # DMD reference/import tables
+    "OLD.dmd_control_drug_categories",
+    "OLD.dmd_drug_forms",
+    "OLD.dmd_ingredients",
+    "OLD.dmd_legal_category",
+    "OLD.dmd_routes",
+    "OLD.dmd_suppliers",
+    "OLD.dmd_unit_of_measures",
+    "OLD.dmd_vtms",
+    "OLD.dmd_vmp",
+    "OLD.dmd_vmpps",
+    "OLD.dmd_vmp_drug_forms",
+    "OLD.dmd_vmp_routes",
+    "OLD.dmd_vmp_control_drug_info",
+    "OLD.dmd_vmp_ingredients",
+    "OLD.amp",
+    "OLD.dmd_amps",
+    "OLD.dmd_ampps",
+]
+
+ORDER_PRIORITY = {key: index for index, key in enumerate(MIGRATION_ORDER)}
+
+
 def normalize_script_key(script_path: Path, base_dir: Path) -> str:
     return script_path.parent.relative_to(base_dir).as_posix()
 
 
 def build_dependency_map() -> dict[str, set[str]]:
     return {
-        # Base/Independent Tables
+        # Core identities / tenants
         "OLD.roles": set(),
         "OLD.head_offices": set(),
-        "OLD.users": set(),
-        "OLD.location_types": set(),
+        "OLD.users": {"OLD.roles"},
         "OLD.location_regulatory_bodies": set(),
-        
-        # DMD Lookup Tables (Independent)
-        "OLD.dmd_amps": set(),
+        "OLD.location_types": set(),
+        "OLD.location": {"OLD.head_offices", "OLD.location_types", "OLD.location_regulatory_bodies"},
+        "OLD.location_tags": {"OLD.head_offices", "OLD.location"},
+        "OLD.head_office_users": {"OLD.head_offices", "OLD.users"},
+        "OLD.user_jobs": {"OLD.head_offices"},
+        "OLD.user_type_categories": {"OLD.head_offices"},
+        "OLD.permissions": {"OLD.roles", "OLD.head_offices", "OLD.users", "OLD.head_office_users"},
+        "OLD.user_job_assigns": {
+            "OLD.users",
+            "OLD.head_offices",
+            "OLD.location",
+            "OLD.head_office_users",
+            "OLD.user_jobs",
+            "OLD.location_regulatory_bodies",
+        },
+
+        # Forms and cases
+        "OLD.forms": {"OLD.head_offices", "OLD.users", "OLD.location", "OLD.head_office_users"},
+        "OLD.head_office_cases": {"OLD.head_offices", "OLD.head_office_users", "OLD.forms"},
+        "OLD.case_handler_users": {"OLD.head_office_cases", "OLD.head_office_users"},
+        "OLD.head_office_user_timings": {"OLD.head_office_users"},
+        "OLD.head_office_holidays": {"OLD.head_offices", "OLD.users", "OLD.head_office_users"},
+
+        # DMD lookup/import tables
         "OLD.dmd_control_drug_categories": set(),
         "OLD.dmd_drug_forms": set(),
         "OLD.dmd_ingredients": set(),
@@ -36,40 +99,20 @@ def build_dependency_map() -> dict[str, set[str]]:
         "OLD.dmd_suppliers": set(),
         "OLD.dmd_unit_of_measures": set(),
         "OLD.dmd_vtms": set(),
-        
-        # AMP (Independent - no dependencies on VMP)
-        "OLD.amp": set(),
-        
-        # DMD VMP Chain (depends on vtms)
         "OLD.dmd_vmp": {"OLD.dmd_vtms"},
         "OLD.dmd_vmpps": {"OLD.dmd_vmp"},
-        "OLD.dmd_vmp_drug_forms": {"OLD.dmd_vmp"},
-        "OLD.dmd_vmp_routes": {"OLD.dmd_vmp"},
-        "OLD.dmd_vmp_control_drug_info": {"OLD.dmd_vmp"},
+        "OLD.dmd_vmp_drug_forms": {"OLD.dmd_vmp", "OLD.dmd_drug_forms"},
+        "OLD.dmd_vmp_routes": {"OLD.dmd_vmp", "OLD.dmd_routes"},
+        "OLD.dmd_vmp_control_drug_info": {"OLD.dmd_vmp", "OLD.dmd_control_drug_categories"},
         "OLD.dmd_vmp_ingredients": {"OLD.dmd_vmp", "OLD.dmd_ingredients"},
-        
-        # AMP Packs (depends on amp only)
+        "OLD.amp": set(),
+        "OLD.dmd_amps": {"OLD.dmd_legal_category"},
         "OLD.dmd_ampps": {"OLD.amp"},
-        
-        # User and Company Relationships
-        "OLD.head_office_users": {"OLD.head_offices", "OLD.users"},
-        "OLD.user_jobs": {"OLD.head_offices"},
-        "OLD.user_type_categories": {"OLD.head_offices"},
-        
-        # Locations
-        "OLD.location": {"OLD.head_offices", "OLD.location_types", "OLD.location_regulatory_bodies"},
-        
-        # Cases and Timeline
-        "OLD.head_office_cases": {"OLD.head_offices", "OLD.head_office_users"},
-        "OLD.head_office_user_timings": {"OLD.head_office_users"},
-        "OLD.head_office_holidays": {"OLD.head_offices", "OLD.users", "OLD.head_office_users"},
-        
-        # User Type Assignments
-        "OLD.user_type_cat_assigns": {"OLD.user_jobs", "OLD.user_type_categories"},
-        
-        # Case Handler Users (depends on case_handler_users table being created by head_office_cases)
-        "OLD.case_handler_users": {"OLD.head_office_users"},
     }
+
+
+def sort_migration_keys(keys) -> list[str]:
+    return sorted(keys, key=lambda key: (ORDER_PRIORITY.get(key, len(ORDER_PRIORITY)), key))
 
 
 def find_migration_scripts(base_dir: Path) -> list[Path]:
@@ -93,20 +136,20 @@ def find_migration_scripts(base_dir: Path) -> list[Path]:
             reverse_dependencies[dep].add(key)
 
     indegree = {key: len(dependencies[key]) for key in script_keys}
-    ready = deque(sorted([key for key, degree in indegree.items() if degree == 0]))
+    ready = deque(sort_migration_keys([key for key, degree in indegree.items() if degree == 0]))
     ordered_keys: list[str] = []
 
     while ready:
         current = ready.popleft()
         ordered_keys.append(current)
 
-        for dependent in sorted(reverse_dependencies[current]):
+        for dependent in sort_migration_keys(reverse_dependencies[current]):
             indegree[dependent] -= 1
             if indegree[dependent] == 0:
                 ready.append(dependent)
 
         if len(ready) > 1:
-            ready = deque(sorted(ready))
+            ready = deque(sort_migration_keys(ready))
 
     if len(ordered_keys) != len(script_keys):
         return discovered_paths
@@ -128,6 +171,28 @@ def run_migration(script_path: Path, extra_args: list[str]) -> int:
     return completed.returncode
 
 
+def filter_scripts(
+    scripts: list[Path],
+    base_dir: Path,
+    start_at: str | None = None,
+    only: str | None = None,
+) -> list[Path]:
+    if only:
+        filtered = [script for script in scripts if normalize_script_key(script, base_dir) == only]
+        if not filtered:
+            raise ValueError(f"Migration key not found for --only: {only}")
+        return filtered
+
+    if not start_at:
+        return scripts
+
+    for index, script in enumerate(scripts):
+        if normalize_script_key(script, base_dir) == start_at:
+            return scripts[index:]
+
+    raise ValueError(f"Migration key not found for --start-at: {start_at}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run all migration.py files under Migration Tables in sequence.",
@@ -147,6 +212,14 @@ def main() -> int:
         action="store_true",
         help="Stop execution if any migration script exits with a non-zero status.",
     )
+    parser.add_argument(
+        "--start-at",
+        help="Start from a migration key such as OLD.forms and continue through the remaining sequence.",
+    )
+    parser.add_argument(
+        "--only",
+        help="Run only one migration key such as OLD.forms.",
+    )
     args = parser.parse_args()
 
     base_dir = Path(args.base_dir).expanduser().resolve()
@@ -158,6 +231,11 @@ def main() -> int:
     if not scripts:
         print(f"No migration.py files found under: {base_dir}", file=sys.stderr)
         return 1
+    try:
+        scripts = filter_scripts(scripts, base_dir, args.start_at, args.only)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
 
     extra_args = ["--dry-run"] if args.dry_run else []
     failures: list[tuple[Path, int]] = []

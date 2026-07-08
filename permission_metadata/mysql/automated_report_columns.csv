@@ -1,0 +1,21 @@
+id,order,report_id,column_name,created_at,updated_at,is_reason,is_summary_reason,column_type,count_selection,custom_labels,filter_values,form_filter_id,is_hide,is_backend_form,column_code
+111274,0,26,"{   ""id"": ""-328"",   ""name"": ""Branch Number"" }",2025-05-16 21:23:44,2025-05-16 21:23:44,1,0,pharmacy,0,,,,0,0,cdaud2_001
+111275,0,26,"{   ""id"": ""-328"",   ""name"": ""Branch Name"" }",2025-05-16 21:23:44,2025-05-16 21:23:44,1,0,pharmacy_branch_name,0,,,,0,0,cdaud2_002
+111276,0,26,"{   ""id"": ""-328"",   ""name"": ""region"" }",2025-05-17 02:23:44,2025-05-17 02:23:44,1,0,pharmacy_region,0,,,,0,0,cdaud2_003
+111277,0,26,"{   ""id"": ""-328"",   ""name"": ""area"" }",2025-05-17 02:23:44,2025-05-17 02:23:44,1,0,pharmacy_area,0,,,,0,0,cdaud2_004
+111278,0,26,reported_date,2025-08-28 01:19:33,2025-08-28 01:19:33,0,0,,0,,,,0,0,cdaud2_005
+111280,0,26,case_number,2025-08-28 01:19:33,2025-08-28 01:19:33,0,0,,0,,,,0,0,cdaud2_006
+111281,0,26,Type,2025-08-28 01:19:33,2025-08-28 01:19:33,0,0,,0,,,,0,0,cdaud2_007
+111303,0,26,"{""id"":""-34"",""name"":""Date of visit""}",2025-05-16 21:23:44,2025-05-16 21:23:44,1,0,,0,,,,0,0,cdaud2_008
+111304,0,26,"{""id"":""-39"",""name"":""Auditor Name""}",2025-05-16 21:23:44,2025-05-16 21:23:44,1,0,auditor_name,0,,,,0,0,cdaud2_009
+111305,0,26,"{""id"":""-40"",""name"":""Which audit is this?""}",2025-05-16 21:23:44,2025-05-16 21:23:44,1,0,,0,,,,0,0,cdaud2_010
+111306,0,26,"{""id"":""-223"",""name"":""Does the pharmacy have a pharmacist manager/ Team leader""}",2025-05-16 21:23:44,2025-05-16 21:23:44,1,0,,0,,,,0,0,cdaud2_011
+111307,0,26,"{""id"":""-134"",""name"":""Have you identified a discrepancy? (on each CD that has been checked)""}",2025-05-16 21:23:44,2026-01-12 19:57:45,1,0,,0,,,,0,0,cdaud2_012
+111308,0,26,"{""id"":""-140"",""name"":""Is there any evidence of no weekly balance checks within last month (on each CD that has been checked)""}",2025-05-16 21:23:44,2026-01-12 19:59:01,1,0,,0,,,,0,0,cdaud2_013
+111309,0,26,"{""id"":""-709"",""name"":""Are there any unresolved discrepancies for greater than 10 days?""}",2025-05-16 21:23:44,2026-01-12 20:00:03,1,0,,0,,,,0,0,cdaud2_014
+111310,0,26,"{""id"":""-550"",""name"":""Following this audit and a review of PharmCD weekly balance check dashboards do you have any professional concerns relating to Controlled Drug Management at this branch?""}",2025-05-16 21:23:44,2026-01-12 19:53:26,1,0,,0,,,,0,0,cdaud2_015
+111311,0,26,"{""id"":""-318"",""name"":""Are you planning on undertaking performance management due to poor CD management?""}",2025-05-16 21:23:44,2025-05-16 21:23:44,1,0,,0,,,,0,0,cdaud2_016
+111312,0,26,"Based on the information, the next audit is due:",2025-05-16 21:23:44,2025-05-16 21:23:44,1,0,raw_json,0,,,,0,0,cdaud2_017
+111313,0,26,"{""id"":""-48"",""name"":""Unless the CD cabinet was currently being accessed, were the CD keys in the RP’s personal possession and CD cabinet(s) locked?""}",2025-07-07 03:24:25,2025-07-07 03:24:25,1,0,,0,,,,0,0,cdaud2_018
+111314,0,26,"{""id"":""-53"",""name"":""Are there any signs on the outside of the CD cabinet to indicate the nature of contents?""}",2025-07-07 03:24:25,2025-07-07 03:24:25,1,0,,0,,,,0,0,cdaud2_019
+111315,0,26,"{""id"":""-64"",""name"":""Is the CD cabinet(s) an adequate size and meets the branch needs?""}",2025-07-07 03:24:25,2025-07-07 03:24:25,1,0,,0,,,,0,0,cdaud2_020

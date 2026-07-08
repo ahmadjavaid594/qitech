@@ -1,0 +1,19 @@
+id,name,created_at,updated_at
+1,manage_users,2023-12-27 20:30:05,2023-12-27 20:30:05
+2,add_users,2023-12-27 20:30:05,2023-12-27 20:30:05
+3,remove_users,2023-12-27 20:30:05,2023-12-27 20:30:05
+4,block_users,2023-12-27 20:30:05,2023-12-27 20:30:05
+5,remove_user_profile_types,2023-12-27 20:30:05,2023-12-27 20:30:05
+6,edit_default_user_profile_types,2023-12-27 20:30:05,2023-12-27 20:30:05
+7,create_user_profile_types,2023-12-27 20:30:05,2023-12-27 20:30:05
+8,manage_head_office_settings,2023-12-27 20:30:05,2023-12-27 20:30:05
+9,manage_locations,2023-12-27 20:30:05,2023-12-27 20:30:05
+10,change_location_settings,2023-12-27 20:30:05,2023-12-27 20:30:05
+11,can_remotely_access,2023-12-27 20:30:05,2023-12-27 20:30:05
+12,manager_access,2023-12-27 20:30:05,2023-12-27 20:30:05
+13,assign_nickname,2023-12-27 20:30:05,2023-12-27 20:30:05
+14,change_premises_account_setting,2023-12-27 20:30:05,2023-12-27 20:30:05
+15,change_premises_account_password,2023-12-27 20:30:05,2023-12-27 20:30:05
+16,assign_to_groups,2023-12-27 20:30:05,2023-12-27 20:30:05
+17,manage_case_manager,2023-12-27 20:30:05,2023-12-27 20:30:05
+18,can_access_settings,2023-12-27 20:30:05,2023-12-27 20:30:05

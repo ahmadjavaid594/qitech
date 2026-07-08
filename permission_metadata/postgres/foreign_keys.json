@@ -1,0 +1,2510 @@
+[
+  {
+    "table_name": "activity_log",
+    "column_name": "user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "audit_log",
+    "column_name": "user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_statuses",
+    "column_name": "template_id",
+    "foreign_table": "case_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_statuses",
+    "column_name": "parent_id",
+    "foreign_table": "case_template_statuses",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_templates",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "categories",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "companies_status_history",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "companies_status_history",
+    "column_name": "user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "companies",
+    "column_name": "estimated_staff_count_id",
+    "foreign_table": "staff_sizes",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "companies",
+    "column_name": "current_theme_id",
+    "foreign_table": "themes",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_call_preferences",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_help_desk_hours",
+    "column_name": "help_desk_id",
+    "foreign_table": "company_help_desk",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_help_desk",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_industry",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_industry",
+    "column_name": "industry_id",
+    "foreign_table": "industries",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_invite_sites",
+    "column_name": "invite_id",
+    "foreign_table": "company_invites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_invite_sites",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_invites",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_invites",
+    "column_name": "company_role_id",
+    "foreign_table": "company_roles",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_invites",
+    "column_name": "invited_by_user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_invites",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_ip_restrictions",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_key_contacts",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_key_contacts",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_roles",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_settings",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_user_contacts",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_user_expertise_areas",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_user_leaves",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_user_user_sub_types",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_user_user_sub_types",
+    "column_name": "user_sub_type_id",
+    "foreign_table": "user_sub_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_user_user_types",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_user_user_types",
+    "column_name": "user_type_id",
+    "foreign_table": "user_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_user_user_types",
+    "column_name": "regulatory_body_id",
+    "foreign_table": "regulatory_bodies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_user_work_schedules",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_users",
+    "column_name": "user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_users",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_users",
+    "column_name": "company_role_id",
+    "foreign_table": "company_roles",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_users",
+    "column_name": "invited_by_company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_users",
+    "column_name": "invited_by_user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_users",
+    "column_name": "work_environment_id",
+    "foreign_table": "work_environments",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cupboards",
+    "column_name": "siteId",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "entries",
+    "column_name": "registerId",
+    "foreign_table": "registers",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "entries",
+    "column_name": "patientId",
+    "foreign_table": "patients",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "entries",
+    "column_name": "prescriberId",
+    "foreign_table": "prescribers",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "entries",
+    "column_name": "supplierId",
+    "foreign_table": "suppliers",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "entries",
+    "column_name": "witnessId",
+    "foreign_table": "witnesses",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "entries",
+    "column_name": "entryByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "entry_notes",
+    "column_name": "entryId",
+    "foreign_table": "entries",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "entry_notes",
+    "column_name": "createdByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "industries",
+    "column_name": "parent_id",
+    "foreign_table": "industries",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "org_levels",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "org_unit_site",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "org_unit_site",
+    "column_name": "org_unit_id",
+    "foreign_table": "org_units",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "org_units",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "org_units",
+    "column_name": "parent_id",
+    "foreign_table": "org_units",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "patients",
+    "column_name": "companyId",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "patients",
+    "column_name": "createdByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "permission_assignments",
+    "column_name": "permission_id",
+    "foreign_table": "permissions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "prescribers",
+    "column_name": "companyId",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "prescribers",
+    "column_name": "createdByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "registers",
+    "column_name": "siteId",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "registers",
+    "column_name": "cupboardId",
+    "foreign_table": "cupboards",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "registers",
+    "column_name": "vmpId",
+    "foreign_table": "dmd_virtual_medicinal_products",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "registers",
+    "column_name": "ampId",
+    "foreign_table": "dmd_actual_medicinal_products",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "registers",
+    "column_name": "vmppId",
+    "foreign_table": "dmd_virtual_medicinal_product_packs",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "registers",
+    "column_name": "amppId",
+    "foreign_table": "dmd_actual_medicinal_product_packs",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "registers",
+    "column_name": "closedByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "registers",
+    "column_name": "createdByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "registers",
+    "column_name": "deletedByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "regulatory_bodies",
+    "column_name": "country_id",
+    "foreign_table": "countries",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "site_settings",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "site_tag",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "site_tag",
+    "column_name": "tag_id",
+    "foreign_table": "tags",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "site_tag_visibility",
+    "column_name": "tag_id",
+    "foreign_table": "tags",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "site_tag_visibility",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "site_types",
+    "column_name": "parent_id",
+    "foreign_table": "site_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "sites_status_history",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "sites_status_history",
+    "column_name": "user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "sites",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "sites",
+    "column_name": "type_id",
+    "foreign_table": "site_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "sites",
+    "column_name": "regulatory_body_id",
+    "foreign_table": "regulatory_bodies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "sites",
+    "column_name": "current_theme_id",
+    "foreign_table": "themes",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "suppliers",
+    "column_name": "companyId",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "suppliers",
+    "column_name": "createdByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "tag_user_permission",
+    "column_name": "tag_id",
+    "foreign_table": "tags",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "tag_user_permission",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "tags",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "tags",
+    "column_name": "parent_id",
+    "foreign_table": "tags",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "tags",
+    "column_name": "category_id",
+    "foreign_table": "categories",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "user_sub_types",
+    "column_name": "user_type_id",
+    "foreign_table": "user_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "user_type_additional_types",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "user_type_additional_types",
+    "column_name": "main_user_type_id",
+    "foreign_table": "user_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "user_type_additional_types",
+    "column_name": "additional_user_type_id",
+    "foreign_table": "user_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "user_type_approval_requests",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "user_type_approval_requests",
+    "column_name": "requested_by",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "user_type_approval_requests",
+    "column_name": "reviewed_by",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "user_type_categories",
+    "column_name": "user_type_id",
+    "foreign_table": "user_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "user_type_categories",
+    "column_name": "category_id",
+    "foreign_table": "categories",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "user_types",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "users",
+    "column_name": "role_id",
+    "foreign_table": "roles",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "witnesses",
+    "column_name": "companyId",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "witnesses",
+    "column_name": "createdByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "work_environment_roles",
+    "column_name": "work_environment_id",
+    "foreign_table": "work_environments",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "work_environment_roles",
+    "column_name": "company_role_id",
+    "foreign_table": "company_roles",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "work_environment_user_types",
+    "column_name": "work_environment_id",
+    "foreign_table": "work_environments",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "work_environment_user_types",
+    "column_name": "user_type_id",
+    "foreign_table": "user_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "work_environments",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "work_environments",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "dmd_actual_medicinal_product_packs",
+    "column_name": "new_id",
+    "foreign_table": "dmd_actual_medicinal_product_packs",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "dmd_actual_medicinal_products",
+    "column_name": "new_id",
+    "foreign_table": "dmd_actual_medicinal_products",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "dmd_controlled_drugs",
+    "column_name": "new_id",
+    "foreign_table": "dmd_controlled_drugs",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "dmd_ingredient_substances",
+    "column_name": "new_id",
+    "foreign_table": "dmd_ingredient_substances",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "dmd_virtual_medicinal_product_packs",
+    "column_name": "new_id",
+    "foreign_table": "dmd_virtual_medicinal_product_packs",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "dmd_virtual_medicinal_products",
+    "column_name": "new_id",
+    "foreign_table": "dmd_virtual_medicinal_products",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "dmd_virtual_therapeutic_moieties",
+    "column_name": "new_id",
+    "foreign_table": "dmd_virtual_therapeutic_moieties",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "snomed_concepts",
+    "column_name": "new_id",
+    "foreign_table": "snomed_concepts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "snomed_descriptions",
+    "column_name": "new_id",
+    "foreign_table": "snomed_descriptions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "snomed_relationships",
+    "column_name": "new_id",
+    "foreign_table": "snomed_relationships",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_investigator_group_sites",
+    "column_name": "investigator_group_id",
+    "foreign_table": "case_template_investigator_groups",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_investigator_group_users",
+    "column_name": "investigator_group_id",
+    "foreign_table": "case_template_investigator_groups",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_investigator_groups",
+    "column_name": "case_template_id",
+    "foreign_table": "case_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_id_fields",
+    "column_name": "template_id",
+    "foreign_table": "case_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_auto_close_exempt_tags",
+    "column_name": "template_id",
+    "foreign_table": "case_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_auto_close_exempt_tags",
+    "column_name": "tag_id",
+    "foreign_table": "tags",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "patients",
+    "column_name": "deletedByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "prescribers",
+    "column_name": "deletedByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "healthcare_organisations",
+    "column_name": "companyId",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "healthcare_organisations",
+    "column_name": "createdByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "entries",
+    "column_name": "healthcareOrganisationId",
+    "foreign_table": "healthcare_organisations",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_file_links",
+    "column_name": "template_id",
+    "foreign_table": "case_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "entry_filters",
+    "column_name": "companyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_deadlines",
+    "column_name": "template_id",
+    "foreign_table": "case_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_link_links",
+    "column_name": "template_id",
+    "foreign_table": "case_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_link_links",
+    "column_name": "link_id",
+    "foreign_table": "case_template_links",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_links",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_links",
+    "column_name": "created_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "entries",
+    "column_name": "originalEntryId",
+    "foreign_table": "entries",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_closing_reason_template_files",
+    "column_name": "closing_reason_template_id",
+    "foreign_table": "case_template_closing_reason_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_closing_reason_template_files",
+    "column_name": "file_id",
+    "foreign_table": "company_files",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_closing_reason_templates",
+    "column_name": "template_id",
+    "foreign_table": "case_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_files",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_files",
+    "column_name": "created_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_file_links",
+    "column_name": "file_id",
+    "foreign_table": "company_files",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_files",
+    "column_name": "file_id",
+    "foreign_table": "company_files",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cd_transfers",
+    "column_name": "fromRegisterId",
+    "foreign_table": "registers",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cd_transfers",
+    "column_name": "toSiteId",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cd_transfers",
+    "column_name": "toRegisterId",
+    "foreign_table": "registers",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cd_transfers",
+    "column_name": "witnessId",
+    "foreign_table": "witnesses",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cd_transfers",
+    "column_name": "initiatedByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cd_transfers",
+    "column_name": "resolvedByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cd_transfers",
+    "column_name": "outEntryId",
+    "foreign_table": "entries",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cd_transfers",
+    "column_name": "inEntryId",
+    "foreign_table": "entries",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "witnesses",
+    "column_name": "companyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_org_units",
+    "column_name": "org_unit_id",
+    "foreign_table": "org_units",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_closing_reasons",
+    "column_name": "case_id",
+    "foreign_table": "cases",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_deadlines",
+    "column_name": "case_id",
+    "foreign_table": "cases",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_investigator_group_sites",
+    "column_name": "investigator_group_id",
+    "foreign_table": "case_investigator_groups",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_investigator_group_sites",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_investigator_group_users",
+    "column_name": "investigator_group_id",
+    "foreign_table": "case_investigator_groups",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_investigator_group_users",
+    "column_name": "user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_investigator_groups",
+    "column_name": "case_id",
+    "foreign_table": "cases",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_statuses",
+    "column_name": "case_id",
+    "foreign_table": "cases",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_statuses",
+    "column_name": "parent_id",
+    "foreign_table": "case_statuses",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cases",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cases",
+    "column_name": "template_id",
+    "foreign_table": "case_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cases",
+    "column_name": "status_id",
+    "foreign_table": "case_statuses",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_investigator_group_sites",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_investigator_group_users",
+    "column_name": "user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_schemas",
+    "column_name": "form_definition_id",
+    "foreign_table": "form_definitions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_submission_revisions",
+    "column_name": "form_submission_id",
+    "foreign_table": "form_submissions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_submission_revisions",
+    "column_name": "edited_by_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_submissions",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_submissions",
+    "column_name": "form_definition_id",
+    "foreign_table": "form_definitions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_submissions",
+    "column_name": "submitted_by_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_submissions",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_submissions",
+    "column_name": "case_id",
+    "foreign_table": "cases",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_help_desk",
+    "column_name": "form_id",
+    "foreign_table": "form_definitions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_org_units",
+    "column_name": "form_definition_id",
+    "foreign_table": "form_definitions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_access",
+    "column_name": "form_definition_id",
+    "foreign_table": "form_definitions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_definitions",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_submission_answers",
+    "column_name": "form_submission_id",
+    "foreign_table": "form_submissions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "user_org_unit",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "user_org_unit",
+    "column_name": "org_unit_id",
+    "foreign_table": "org_units",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_statuses",
+    "column_name": "parent_id",
+    "foreign_table": "task_statuses",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_tag",
+    "column_name": "tag_id",
+    "foreign_table": "tags",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_type_tag",
+    "column_name": "task_type_id",
+    "foreign_table": "task_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_type_tag",
+    "column_name": "tag_id",
+    "foreign_table": "tags",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_address_links",
+    "column_name": "contact_id",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_address_links",
+    "column_name": "address_id",
+    "foreign_table": "contact_addresses",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_addresses",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_addresses",
+    "column_name": "created_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_addresses",
+    "column_name": "deleted_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_field_definitions",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_field_values",
+    "column_name": "contact_id",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_field_values",
+    "column_name": "field_def_id",
+    "foreign_table": "contact_field_definitions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_field_values",
+    "column_name": "form_submission_id",
+    "foreign_table": "form_submissions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_tag",
+    "column_name": "contact_id",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_tag",
+    "column_name": "tag_id",
+    "foreign_table": "tags",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contacts",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contacts",
+    "column_name": "created_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contacts",
+    "column_name": "deleted_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_template_assignee",
+    "column_name": "task_template_id",
+    "foreign_table": "task_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_template_assignee",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_template_tag",
+    "column_name": "task_template_id",
+    "foreign_table": "task_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_template_tag",
+    "column_name": "tag_id",
+    "foreign_table": "tags",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_template_task_type",
+    "column_name": "task_template_id",
+    "foreign_table": "task_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_template_task_type",
+    "column_name": "task_type_id",
+    "foreign_table": "task_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_templates",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_definition_categories",
+    "column_name": "form_definition_id",
+    "foreign_table": "form_definitions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_definition_categories",
+    "column_name": "category_id",
+    "foreign_table": "categories",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_definitions",
+    "column_name": "created_by",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_definitions",
+    "column_name": "updated_by",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_workflow_stages",
+    "column_name": "workflow_id",
+    "foreign_table": "case_template_workflows",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_workflows",
+    "column_name": "template_id",
+    "foreign_table": "case_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_template_file_links",
+    "column_name": "task_template_id",
+    "foreign_table": "task_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_template_file_links",
+    "column_name": "file_id",
+    "foreign_table": "company_files",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_templates",
+    "column_name": "stage_id",
+    "foreign_table": "case_template_workflow_stages",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_assignee",
+    "column_name": "task_id",
+    "foreign_table": "tasks",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_assignee",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_file_links",
+    "column_name": "task_id",
+    "foreign_table": "tasks",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_file_links",
+    "column_name": "file_id",
+    "foreign_table": "company_files",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_type_statuses",
+    "column_name": "task_type_id",
+    "foreign_table": "task_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_type_statuses",
+    "column_name": "parent_id",
+    "foreign_table": "task_type_statuses",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "tasks",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "tasks",
+    "column_name": "template_id",
+    "foreign_table": "task_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "tasks",
+    "column_name": "task_type_id",
+    "foreign_table": "task_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "tasks",
+    "column_name": "case_id",
+    "foreign_table": "cases",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "tasks",
+    "column_name": "status_id",
+    "foreign_table": "task_statuses",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_statuses",
+    "column_name": "task_id",
+    "foreign_table": "tasks",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_tag",
+    "column_name": "task_id",
+    "foreign_table": "tasks",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_activity",
+    "column_name": "form_definition_id",
+    "foreign_table": "form_definitions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_activity",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_activity",
+    "column_name": "user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_versions",
+    "column_name": "form_schema_id",
+    "foreign_table": "form_schemas",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_versions",
+    "column_name": "created_by",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_schema_snapshots",
+    "column_name": "form_version_id",
+    "foreign_table": "form_versions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_schema_snapshots",
+    "column_name": "parent_snapshot_id",
+    "foreign_table": "form_schema_snapshots",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_schema_snapshots",
+    "column_name": "created_by",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_submission_revisions",
+    "column_name": "form_version_id",
+    "foreign_table": "form_versions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_submission_revisions",
+    "column_name": "form_version_schema_snapshot_id",
+    "foreign_table": "form_schema_snapshots",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_submissions",
+    "column_name": "form_version_id",
+    "foreign_table": "form_versions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_submissions",
+    "column_name": "form_version_schema_snapshot_id",
+    "foreign_table": "form_schema_snapshots",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cd_register_settings",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_workflow_stage_rule_subjects",
+    "column_name": "rule_id",
+    "foreign_table": "case_workflow_stage_rules",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_workflow_stage_rules",
+    "column_name": "stage_id",
+    "foreign_table": "case_workflow_stages",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_workflow_stages",
+    "column_name": "workflow_id",
+    "foreign_table": "case_workflows",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_workflow_stages",
+    "column_name": "template_stage_id",
+    "foreign_table": "case_template_workflow_stages",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_workflows",
+    "column_name": "case_id",
+    "foreign_table": "cases",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_workflows",
+    "column_name": "template_workflow_id",
+    "foreign_table": "case_template_workflows",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_workflow_stage_rule_subjects",
+    "column_name": "rule_id",
+    "foreign_table": "case_template_workflow_stage_rules",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_workflow_stage_rules",
+    "column_name": "stage_id",
+    "foreign_table": "case_template_workflow_stages",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "tasks",
+    "column_name": "stage_id",
+    "foreign_table": "case_workflow_stages",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "comment_attachments",
+    "column_name": "comment_id",
+    "foreign_table": "comments",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "comments",
+    "column_name": "parent_id",
+    "foreign_table": "comments",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "comments",
+    "column_name": "author_user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_assignee_site",
+    "column_name": "task_id",
+    "foreign_table": "tasks",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_assignee_site",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_template_assignee_site",
+    "column_name": "task_template_id",
+    "foreign_table": "task_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_template_assignee_site",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "entry_notes",
+    "column_name": "parent_note_id",
+    "foreign_table": "entry_notes",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_files",
+    "column_name": "case_id",
+    "foreign_table": "cases",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_files",
+    "column_name": "file_id",
+    "foreign_table": "company_files",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_links",
+    "column_name": "case_id",
+    "foreign_table": "cases",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_links",
+    "column_name": "created_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "tasks",
+    "column_name": "created_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_source_relations",
+    "column_name": "contact_id",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_source_relations",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_assignee_site",
+    "column_name": "project_id",
+    "foreign_table": "projects",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_assignee_site",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_assignee",
+    "column_name": "project_id",
+    "foreign_table": "projects",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_assignee",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_file_links",
+    "column_name": "project_id",
+    "foreign_table": "projects",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_file_links",
+    "column_name": "file_id",
+    "foreign_table": "company_files",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_tag",
+    "column_name": "project_id",
+    "foreign_table": "projects",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_tag",
+    "column_name": "tag_id",
+    "foreign_table": "tags",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_template_assignee_site",
+    "column_name": "project_template_id",
+    "foreign_table": "project_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_template_assignee_site",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_template_assignee",
+    "column_name": "project_template_id",
+    "foreign_table": "project_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_template_assignee",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_template_file_links",
+    "column_name": "project_template_id",
+    "foreign_table": "project_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_template_file_links",
+    "column_name": "file_id",
+    "foreign_table": "company_files",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_template_tag",
+    "column_name": "project_template_id",
+    "foreign_table": "project_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_template_tag",
+    "column_name": "tag_id",
+    "foreign_table": "tags",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_templates",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "projects",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "projects",
+    "column_name": "project_template_id",
+    "foreign_table": "project_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_templates",
+    "column_name": "project_template_id",
+    "foreign_table": "project_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "tasks",
+    "column_name": "project_id",
+    "foreign_table": "projects",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_features",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_features",
+    "column_name": "feature_id",
+    "foreign_table": "features",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_features",
+    "column_name": "enabled_by_user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_features",
+    "column_name": "enabled_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "feature_promo_modal_events",
+    "column_name": "feature_id",
+    "foreign_table": "features",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "feature_promo_modal_events",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "feature_promo_modal_events",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "feature_promo_modal_files",
+    "column_name": "modal_id",
+    "foreign_table": "feature_promo_modals",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "feature_promo_modals",
+    "column_name": "feature_id",
+    "foreign_table": "features",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "industry_features",
+    "column_name": "industry_id",
+    "foreign_table": "industries",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "industry_features",
+    "column_name": "feature_id",
+    "foreign_table": "features",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_invite_user_types",
+    "column_name": "invite_id",
+    "foreign_table": "company_invites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_invite_user_types",
+    "column_name": "user_type_id",
+    "foreign_table": "user_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "company_invite_user_types",
+    "column_name": "regulatory_body_id",
+    "foreign_table": "regulatory_bodies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "unlicensed_medications",
+    "column_name": "companyId",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "unlicensed_medications",
+    "column_name": "siteId",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "unlicensed_medications",
+    "column_name": "createdByCompanyUserId",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "registers",
+    "column_name": "unlicensedMedicationId",
+    "foreign_table": "unlicensed_medications",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_tags",
+    "column_name": "template_id",
+    "foreign_table": "case_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_template_tags",
+    "column_name": "tag_id",
+    "foreign_table": "tags",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "projects",
+    "column_name": "created_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "auto_merge_rule_conditions",
+    "column_name": "rule_id",
+    "foreign_table": "auto_merge_rules",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "auto_merge_rule_conditions",
+    "column_name": "field_def_id",
+    "foreign_table": "contact_field_definitions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "auto_merge_rules",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_activities",
+    "column_name": "project_id",
+    "foreign_table": "projects",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "project_activities",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_activities",
+    "column_name": "task_id",
+    "foreign_table": "tasks",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "task_activities",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cases",
+    "column_name": "form_definition_id",
+    "foreign_table": "form_definitions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "cases",
+    "column_name": "form_submission_id",
+    "foreign_table": "form_submissions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_definitions",
+    "column_name": "case_template_id",
+    "foreign_table": "case_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_activity",
+    "column_name": "contact_id",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_activity",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_activity",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_assignee",
+    "column_name": "contact_id",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_assignee",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_block_keys",
+    "column_name": "contact_id",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_block_keys",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_match_candidates",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_match_candidates",
+    "column_name": "contact_id_a",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_match_candidates",
+    "column_name": "contact_id_b",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_match_candidates",
+    "column_name": "rule_id",
+    "foreign_table": "auto_merge_rules",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_match_candidates",
+    "column_name": "resolved_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_match_exclusions",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_match_exclusions",
+    "column_name": "contact_id_a",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_match_exclusions",
+    "column_name": "contact_id_b",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_match_exclusions",
+    "column_name": "rule_id",
+    "foreign_table": "auto_merge_rules",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_match_exclusions",
+    "column_name": "excluded_contact_id",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_match_exclusions",
+    "column_name": "excluded_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_merge_history",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_merge_history",
+    "column_name": "survivor_id",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_merge_history",
+    "column_name": "merged_id",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_merge_history",
+    "column_name": "rule_id",
+    "foreign_table": "auto_merge_rules",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_merge_history",
+    "column_name": "candidate_id",
+    "foreign_table": "contact_match_candidates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_merge_history",
+    "column_name": "merged_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_relations",
+    "column_name": "contact_id",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_relations",
+    "column_name": "related_contact_id",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contacts",
+    "column_name": "merged_into_contact_id",
+    "foreign_table": "contacts",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_comment_drafts",
+    "column_name": "case_id",
+    "foreign_table": "cases",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_comment_drafts",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "dashboard_section_reports",
+    "column_name": "row_id",
+    "foreign_table": "dashboard_section_rows",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "dashboard_section_reports",
+    "column_name": "report_id",
+    "foreign_table": "reports",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "dashboard_section_rows",
+    "column_name": "section_id",
+    "foreign_table": "dashboard_sections",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "dashboard_sections",
+    "column_name": "dashboard_id",
+    "foreign_table": "dashboards",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "dashboards",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "dashboards",
+    "column_name": "created_by_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "report_access",
+    "column_name": "report_id",
+    "foreign_table": "reports",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "report_measures",
+    "column_name": "report_id",
+    "foreign_table": "reports",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_templates",
+    "column_name": "updated_by",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_definitions",
+    "column_name": "form_template_id",
+    "foreign_table": "form_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_filters",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "healthcare_organisations",
+    "column_name": "createdAtSiteId",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_handlers",
+    "column_name": "case_id",
+    "foreign_table": "cases",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_handlers",
+    "column_name": "company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_handlers",
+    "column_name": "assigned_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "contact_address_links",
+    "column_name": "field_def_id",
+    "foreign_table": "contact_field_definitions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "registers",
+    "column_name": "vtmId",
+    "foreign_table": "dmd_virtual_therapeutic_moieties",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_template_activity",
+    "column_name": "form_template_id",
+    "foreign_table": "form_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_template_activity",
+    "column_name": "user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_template_industries",
+    "column_name": "form_template_id",
+    "foreign_table": "form_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_template_industries",
+    "column_name": "industry_id",
+    "foreign_table": "industries",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_template_owners",
+    "column_name": "form_template_id",
+    "foreign_table": "form_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_template_owners",
+    "column_name": "user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_template_tag_assignments",
+    "column_name": "form_template_id",
+    "foreign_table": "form_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_template_tag_assignments",
+    "column_name": "tag_id",
+    "foreign_table": "form_template_tags",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_templates",
+    "column_name": "created_by",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "patients",
+    "column_name": "createdAtSiteId",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "suppliers",
+    "column_name": "createdAtSiteId",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "report_assignment_targets",
+    "column_name": "report_assignment_id",
+    "foreign_table": "report_assignments",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "report_assignment_targets",
+    "column_name": "site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "report_assignment_targets",
+    "column_name": "org_unit_id",
+    "foreign_table": "org_units",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "report_assignments",
+    "column_name": "report_id",
+    "foreign_table": "reports",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "report_date_filters",
+    "column_name": "report_id",
+    "foreign_table": "reports",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "reports",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "reports",
+    "column_name": "created_by_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_definition_update_notices",
+    "column_name": "form_definition_id",
+    "foreign_table": "form_definitions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "form_definitions",
+    "column_name": "integration_key_approved_by",
+    "foreign_table": "users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_tags",
+    "column_name": "case_id",
+    "foreign_table": "cases",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "case_tags",
+    "column_name": "tag_id",
+    "foreign_table": "tags",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rcas",
+    "column_name": "deleted_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rca_fishbone_causes",
+    "column_name": "factor_row_id",
+    "foreign_table": "rca_fishbone_factors",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rca_fishbone_factors",
+    "column_name": "version_id",
+    "foreign_table": "rca_versions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rca_five_why_steps",
+    "column_name": "version_id",
+    "foreign_table": "rca_versions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rca_templates",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rca_templates",
+    "column_name": "created_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rca_user_types",
+    "column_name": "rca_id",
+    "foreign_table": "rcas",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rca_user_types",
+    "column_name": "user_type_id",
+    "foreign_table": "user_types",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rca_versions",
+    "column_name": "rca_id",
+    "foreign_table": "rcas",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rca_versions",
+    "column_name": "completed_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rca_versions",
+    "column_name": "approved_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rca_versions",
+    "column_name": "redo_requested_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rcas",
+    "column_name": "company_id",
+    "foreign_table": "companies",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rcas",
+    "column_name": "case_id",
+    "foreign_table": "cases",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rcas",
+    "column_name": "form_submission_id",
+    "foreign_table": "form_submissions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rcas",
+    "column_name": "template_id",
+    "foreign_table": "rca_templates",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rcas",
+    "column_name": "recipient_site_id",
+    "foreign_table": "sites",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rcas",
+    "column_name": "recipient_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rcas",
+    "column_name": "created_by_company_user_id",
+    "foreign_table": "company_users",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "report_breakdown_time_blocks",
+    "column_name": "breakdown_id",
+    "foreign_table": "report_breakdowns",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "report_breakdowns",
+    "column_name": "report_id",
+    "foreign_table": "reports",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "report_filters",
+    "column_name": "report_id",
+    "foreign_table": "reports",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "report_measure_conditions",
+    "column_name": "measure_id",
+    "foreign_table": "report_measures",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "report_measures",
+    "column_name": "parent_measure_id",
+    "foreign_table": "report_measures",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "reports",
+    "column_name": "form_definition_id",
+    "foreign_table": "form_definitions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "report_forms",
+    "column_name": "report_id",
+    "foreign_table": "reports",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "report_forms",
+    "column_name": "form_definition_id",
+    "foreign_table": "form_definitions",
+    "foreign_column": "id"
+  },
+  {
+    "table_name": "rca_templates",
+    "column_name": "case_template_id",
+    "foreign_table": "case_templates",
+    "foreign_column": "id"
+  }
+]

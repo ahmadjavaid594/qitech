@@ -121,6 +121,46 @@ def insert_batch(pg_conn, rows: List[Dict[str, Any]]):
     pg_conn.commit()
 
 
+def ensure_company_settings(pg_conn, emails: List[str]) -> int:
+    if not emails:
+        return 0
+
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO public.company_settings (company_id)
+            SELECT id
+            FROM public.companies
+            WHERE email = ANY(%s)
+            ON CONFLICT (company_id) DO NOTHING
+            """,
+            (emails,),
+        )
+        inserted = cur.rowcount
+    pg_conn.commit()
+    return inserted
+
+
+def ensure_company_help_desk(pg_conn, emails: List[str]) -> int:
+    if not emails:
+        return 0
+
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO public.company_help_desk (company_id)
+            SELECT id
+            FROM public.companies
+            WHERE email = ANY(%s)
+            ON CONFLICT (company_id) DO NOTHING
+            """,
+            (emails,),
+        )
+        inserted = cur.rowcount
+    pg_conn.commit()
+    return inserted
+
+
 def main(dry_run: bool = False):
     logging.info("Connecting to MySQL %s:%s/%s", MYSQL_HOST, MYSQL_PORT, MYSQL_DB)
     mysql_conn = pymysql.connect(
@@ -142,14 +182,19 @@ def main(dry_run: bool = False):
 
         offset = 0
         total_inserted = 0
+        total_settings_inserted = 0
+        total_help_desk_inserted = 0
         while True:
             rows = fetch_mysql_rows(mysql_conn, offset, BATCH_SIZE)
             if not rows:
                 break
 
             transformed = []
+            settings_emails = []
             for r in rows:
                 t = transform_row(r)
+                if t["email"] not in settings_emails:
+                    settings_emails.append(t["email"])
                 if t["email"] in existing:
                     continue
                 transformed.append(t)
@@ -157,14 +202,28 @@ def main(dry_run: bool = False):
 
             if dry_run:
                 logging.info("Dry-run: would insert %d rows for offset %d", len(transformed), offset)
+                logging.info("Dry-run: would ensure company_settings for %d companies at offset %d", len(settings_emails), offset)
+                logging.info("Dry-run: would ensure company_help_desk for %d companies at offset %d", len(settings_emails), offset)
             else:
                 insert_batch(pg_conn, transformed)
+                settings_inserted = ensure_company_settings(pg_conn, settings_emails)
+                help_desk_inserted = ensure_company_help_desk(pg_conn, settings_emails)
                 total_inserted += len(transformed)
-                logging.info("Inserted %d rows (offset %d)", len(transformed), offset)
+                total_settings_inserted += settings_inserted
+                total_help_desk_inserted += help_desk_inserted
+                logging.info(
+                    "Inserted %d companies, %d company_settings rows, and %d company_help_desk rows (offset %d)",
+                    len(transformed),
+                    settings_inserted,
+                    help_desk_inserted,
+                    offset,
+                )
 
             offset += BATCH_SIZE
 
         logging.info("Done. Total inserted: %d", total_inserted)
+        logging.info("Done. Total company_settings inserted: %d", total_settings_inserted)
+        logging.info("Done. Total company_help_desk inserted: %d", total_help_desk_inserted)
 
     finally:
         mysql_conn.close()

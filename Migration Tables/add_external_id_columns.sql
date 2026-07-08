@@ -29,3 +29,16 @@ ALTER TABLE public.cases
 
 ALTER TABLE public.roles
     ADD COLUMN IF NOT EXISTS external_id int8 NULL;
+
+ALTER TABLE public.tags
+    ADD COLUMN IF NOT EXISTS external_id int8 NULL;
+
+ALTER TABLE public.form_definitions
+    ADD COLUMN IF NOT EXISTS external_id int8 NULL;
+
+ALTER TABLE public.form_submissions
+    ADD COLUMN IF NOT EXISTS external_id int8 NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS form_submissions_external_id_unique
+    ON public.form_submissions (external_id)
+    WHERE external_id IS NOT NULL;

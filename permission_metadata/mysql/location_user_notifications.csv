@@ -1,0 +1,21 @@
+id,type,title,user_id,location_id,object_id,status,url,created_at,updated_at
+1,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1,1,1,read,https://qitech.kiebit.com/location/view/patient/safety/alert/1,2023-11-01 01:03:57,2023-12-10 00:09:59
+2,patient_safety_alert,"A new Patient Safety Alert ""kjhk"" requires action.",1,1,2,read,https://qitech.kiebit.com/location/view/patient/safety/alert/2,2023-11-01 01:03:57,2024-01-04 16:31:56
+3,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",7,1,1,unread,http://127.0.0.1:8000/location/view/patient/safety/alert/1,2024-03-23 09:22:42,2024-03-23 09:22:42
+4,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1001,1,1,unread,https://qi-tech.co.uk/location/view/patient/safety/alert/1,2024-05-27 16:16:25,2024-05-27 16:16:25
+5,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1005,1,1,unread,https://qi-tech.co.uk/location/view/patient/safety/alert/1,2024-07-24 19:23:37,2024-07-24 19:23:37
+6,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1013,1,1,unread,https://qi-tech.co.uk/location/view/patient/safety/alert/1,2024-08-07 12:49:59,2024-08-07 12:49:59
+7,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1015,72,1,unread,https://qi-tech.co.uk/location/view/patient/safety/alert/1,2024-08-27 18:31:12,2024-08-27 18:31:12
+8,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1024,79,1,unread,https://qi-tech.co.uk/location/view/patient/safety/alert/1,2024-09-10 00:13:44,2024-09-10 00:13:44
+9,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1004,85,1,unread,https://qi-tech.co.uk/location/view/patient/safety/alert/1,2024-10-25 18:44:07,2024-10-25 18:44:07
+10,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1045,104,1,unread,https://fazool.qi-tech.co.uk/location/view/patient/safety/alert/1,2025-01-03 10:42:38,2025-01-03 10:42:38
+11,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1034,1,1,unread,https://kiebit.qi-tech.co.uk/location/view/patient/safety/alert/1,2025-01-03 12:06:27,2025-01-03 12:06:27
+12,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1056,1,1,unread,https://testing.qi-tech.co.uk/location/view/patient/safety/alert/1,2025-01-03 19:35:59,2025-01-03 19:35:59
+13,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1063,103,1,unread,https://well.qi-tech.co.uk/location/view/patient/safety/alert/1,2025-02-24 18:47:15,2025-02-24 18:47:15
+14,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1076,103,1,unread,https://well.qi-tech.co.uk/location/view/patient/safety/alert/1,2025-02-25 13:10:14,2025-02-25 13:10:14
+15,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1071,103,1,unread,https://well.qi-tech.co.uk/location/view/patient/safety/alert/1,2025-02-25 21:45:09,2025-02-25 21:45:09
+16,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1066,103,1,unread,https://well.qi-tech.co.uk/location/view/patient/safety/alert/1,2025-02-26 01:06:25,2025-02-26 01:06:25
+17,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1070,103,1,unread,https://well.qi-tech.co.uk/location/view/patient/safety/alert/1,2025-02-26 15:35:39,2025-02-26 15:35:39
+18,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1072,103,1,unread,https://well.qi-tech.co.uk/location/view/patient/safety/alert/1,2025-02-27 16:37:40,2025-02-27 16:37:40
+19,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1057,103,1,unread,https://well.qi-tech.co.uk/location/view/patient/safety/alert/1,2025-02-28 16:56:24,2025-02-28 16:56:24
+20,patient_safety_alert,"A new Patient Safety Alert ""test"" requires action.",1075,105,1,unread,https://testing.qi-tech.co.uk/location/view/patient/safety/alert/1,2025-02-28 19:16:31,2025-02-28 19:16:31
