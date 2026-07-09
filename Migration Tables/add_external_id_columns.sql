@@ -9,6 +9,9 @@ ALTER TABLE public.users
 ALTER TABLE public.company_users
     ADD COLUMN IF NOT EXISTS external_id int8 NULL;
 
+ALTER TABLE public.company_roles
+    ADD COLUMN IF NOT EXISTS external_id int8 NULL;
+
 ALTER TABLE public.user_types
     ADD COLUMN IF NOT EXISTS external_id int8 NULL;
 
@@ -39,6 +42,17 @@ ALTER TABLE public.form_definitions
 ALTER TABLE public.form_submissions
     ADD COLUMN IF NOT EXISTS external_id int8 NULL;
 
+ALTER TABLE public.org_units
+    ADD COLUMN IF NOT EXISTS external_id int8 NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS org_units_external_id_uq
+    ON public.org_units (external_id)
+    WHERE external_id IS NOT NULL;
+
 CREATE UNIQUE INDEX IF NOT EXISTS form_submissions_external_id_unique
     ON public.form_submissions (external_id)
+    WHERE external_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS company_roles_external_id_unique
+    ON public.company_roles (external_id)
     WHERE external_id IS NOT NULL;

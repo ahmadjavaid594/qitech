@@ -17,6 +17,8 @@ MIGRATION_ORDER = [
     # Core identities / tenants
     "OLD.roles",
     "OLD.head_offices",
+    "OLD.head_office_orginisation_levels",
+    "OLD.head_office_orginisation_groups",
     "OLD.users",
     "OLD.location_regulatory_bodies",
     "OLD.location_types",
@@ -25,6 +27,7 @@ MIGRATION_ORDER = [
     "OLD.head_office_users",
     "OLD.user_jobs",
     "OLD.user_type_categories",
+    "OLD.be_spoke_form_categories",
     "OLD.permissions",
     "OLD.user_job_assigns",
     # Forms and cases depend on companies/users/company_users being present.
@@ -65,6 +68,8 @@ def build_dependency_map() -> dict[str, set[str]]:
         # Core identities / tenants
         "OLD.roles": set(),
         "OLD.head_offices": set(),
+        "OLD.head_office_orginisation_levels": {"OLD.head_offices"},
+        "OLD.head_office_orginisation_groups": {"OLD.head_offices"},
         "OLD.users": {"OLD.roles"},
         "OLD.location_regulatory_bodies": set(),
         "OLD.location_types": set(),
@@ -73,6 +78,7 @@ def build_dependency_map() -> dict[str, set[str]]:
         "OLD.head_office_users": {"OLD.head_offices", "OLD.users"},
         "OLD.user_jobs": {"OLD.head_offices"},
         "OLD.user_type_categories": {"OLD.head_offices"},
+        "OLD.be_spoke_form_categories": {"OLD.head_offices"},
         "OLD.permissions": {"OLD.roles", "OLD.head_offices", "OLD.users", "OLD.head_office_users"},
         "OLD.user_job_assigns": {
             "OLD.users",
@@ -84,7 +90,14 @@ def build_dependency_map() -> dict[str, set[str]]:
         },
 
         # Forms and cases
-        "OLD.forms": {"OLD.head_offices", "OLD.users", "OLD.location", "OLD.head_office_users"},
+        "OLD.forms": {
+            "OLD.head_offices",
+            "OLD.users",
+            "OLD.location",
+            "OLD.head_office_users",
+            "OLD.be_spoke_form_categories",
+            "OLD.head_office_orginisation_groups",
+        },
         "OLD.head_office_cases": {"OLD.head_offices", "OLD.head_office_users", "OLD.forms"},
         "OLD.case_handler_users": {"OLD.head_office_cases", "OLD.head_office_users"},
         "OLD.head_office_user_timings": {"OLD.head_office_users"},

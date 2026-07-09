@@ -13,9 +13,11 @@ Migrates / upserts, in dependency order:
   7. Profile / user access-right rows     -> public.permission_assignments
 
 Why this script is defensive:
-- public.companies, public.users, public.roles and public.company_users have external_id.
-- public.company_roles and public.permissions do NOT have external_id in your metadata,
-  so they are matched by stable values: (company_id, name) and (scope, name).
+- public.companies, public.users, public.roles, public.company_roles and
+  public.company_users have external_id.
+- public.company_roles.external_id stores head_office_user_profiles.id. Roles that
+  only exist as access-right names or fallbacks have no legacy ID and remain NULL.
+- public.permissions does not have external_id, so it is matched by (scope, name).
 - public.permission_assignments has no external_id and no unique key in the metadata,
   so duplicate checks are done before insert.
 
@@ -483,27 +485,59 @@ def upsert_users(mysql_conn, pg_conn, role_map: Dict[int, str], dry_run: bool) -
     )
 
 
-def get_or_create_company_role(pg_conn, company_id: str, name: str, dry_run: bool) -> Optional[str]:
+def get_or_create_company_role(
+    pg_conn,
+    company_id: str,
+    name: str,
+    dry_run: bool,
+    external_id: Optional[int] = None,
+) -> Optional[str]:
     if not company_id or not name:
         return None
     existing = pg_fetch_one(
         pg_conn,
-        "SELECT id::text FROM public.company_roles WHERE company_id = %s AND lower(name) = lower(%s) LIMIT 1",
-        (company_id, name),
+        """
+        SELECT id::text
+        FROM public.company_roles
+        WHERE (%s IS NOT NULL AND external_id = %s)
+           OR (company_id = %s AND lower(name) = lower(%s))
+        ORDER BY CASE WHEN %s IS NOT NULL AND external_id = %s THEN 0 ELSE 1 END
+        LIMIT 1
+        """,
+        (external_id, external_id, company_id, name, external_id, external_id),
     )
     if existing:
+        if external_id is not None and not dry_run:
+            with pg_conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE public.company_roles
+                    SET external_id = COALESCE(external_id, %s),
+                        company_id = %s,
+                        name = %s,
+                        updated_at = %s
+                    WHERE id = %s
+                    """,
+                    (external_id, company_id, name, now_utc(), existing[0]),
+                )
+            pg_conn.commit()
         return existing[0]
     if dry_run:
-        logging.info("Dry-run: would create company_role %s for company %s", name, company_id)
+        logging.info(
+            "Dry-run: would create company_role %s for company %s with external_id=%s",
+            name,
+            company_id,
+            external_id,
+        )
         return None
     with pg_conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO public.company_roles (company_id, name, created_at, updated_at)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO public.company_roles (external_id, company_id, name, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s)
             RETURNING id::text
             """,
-            (company_id, name, now_utc(), now_utc()),
+            (external_id, company_id, name, now_utc(), now_utc()),
         )
         new_id = cur.fetchone()[0]
     pg_conn.commit()
@@ -517,13 +551,21 @@ def upsert_company_roles(mysql_conn, pg_conn, company_map: Dict[int, str], dry_r
     profile_rows = mysql_fetch_all(
         mysql_conn,
         """
-        SELECT head_office_id, profile_name, created_at, updated_at
-        FROM head_office_access_rights
-        WHERE profile_name IS NOT NULL AND profile_name <> ''
-        UNION
-        SELECT head_office_id, profile_name, created_at, updated_at
+        SELECT id AS external_id, head_office_id, profile_name, created_at, updated_at
         FROM head_office_user_profiles
         WHERE profile_name IS NOT NULL AND profile_name <> ''
+        UNION ALL
+        SELECT hoar.id AS external_id, hoar.head_office_id, hoar.profile_name,
+               hoar.created_at, hoar.updated_at
+        FROM head_office_access_rights hoar
+        WHERE hoar.profile_name IS NOT NULL
+          AND hoar.profile_name <> ''
+          AND NOT EXISTS (
+              SELECT 1
+              FROM head_office_user_profiles houp
+              WHERE houp.head_office_id = hoar.head_office_id
+                AND lower(houp.profile_name) = lower(hoar.profile_name)
+          )
         ORDER BY head_office_id, profile_name
         """,
     )
@@ -538,10 +580,11 @@ def upsert_company_roles(mysql_conn, pg_conn, company_map: Dict[int, str], dry_r
         old_company_id = parse_int(r.get("head_office_id"))
         company_id = company_map.get(old_company_id)
         name = clean_text(r.get("profile_name")) or DEFAULT_COMPANY_ROLE
+        external_id = parse_int(r.get("external_id"))
         if not company_id:
             logging.warning("Skipping company_role %r because company external_id %r was not found", name, old_company_id)
             continue
-        role_id = get_or_create_company_role(pg_conn, company_id, name, dry_run)
+        role_id = get_or_create_company_role(pg_conn, company_id, name, dry_run, external_id)
         if role_id:
             role_map[(old_company_id, name.lower())] = role_id
 
@@ -552,10 +595,19 @@ def resolve_profile_name_for_company_user(mysql_conn) -> Dict[int, str]:
     rows = mysql_fetch_all(
         mysql_conn,
         """
-        SELECT houpa.head_office_user_id, houp.profile_name
+        SELECT houpa.head_office_user_id, houp.profile_name,
+               2 AS source_priority, houpa.id AS source_id
         FROM head_office_users_profile_assigns houpa
         JOIN head_office_user_profiles houp ON houp.id = houpa.user_profile_id
         WHERE houp.profile_name IS NOT NULL AND houp.profile_name <> ''
+        UNION ALL
+        SELECT hoar.head_office_user_id, hoar.profile_name,
+               1 AS source_priority, hoar.id AS source_id
+        FROM head_office_access_rights hoar
+        WHERE hoar.head_office_user_id IS NOT NULL
+          AND hoar.profile_name IS NOT NULL
+          AND hoar.profile_name <> ''
+        ORDER BY head_office_user_id, source_priority, source_id
         """,
     )
     result = {}
