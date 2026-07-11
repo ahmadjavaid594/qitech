@@ -86,9 +86,7 @@ def json_param(value: Any) -> Any:
     if value is None:
         return None
     normalized = sanitize_json(value)
-    if isinstance(normalized, (dict, list)):
-        return psycopg2.extras.Json(normalized)
-    return normalized
+    return psycopg2.extras.Json(normalized)
 
 
 def normalize_status(value: Any) -> str:
@@ -256,6 +254,12 @@ def ensure_form_submission_external_id(pg_conn) -> None:
             WHERE external_id IS NOT NULL
             """
         )
+        cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS form_submission_answers_form_submission_id_index
+            ON public.form_submission_answers (form_submission_id)
+            """
+        )
     pg_conn.commit()
 
 
@@ -271,26 +275,173 @@ def build_head_office_user_map(mysql_conn) -> Dict[int, int]:
     return mapping
 
 
-def build_form_definition_schema(form_row: Dict[str, Any], related: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
-    payload: Dict[str, Any] = {
-        "legacy_form": to_json(form_row.get("form_json")) or {},
-        "stages": [to_json(dict(item)) for item in related.get("stages", [])],
-        "question_groups": [to_json(dict(item)) for item in related.get("question_groups", [])],
-        "action_conditions": [to_json(dict(item)) for item in related.get("action_conditions", [])],
+LEGACY_BLOCK_TYPE_MAP = {
+    "text": "shortAnswer",
+    "textarea": "longAnswer",
+    "select": "dropdown",
+    "checkbox": "checkbox",
+    "radio": "radio",
+    "date": "date",
+    "time": "time",
+    "number": "number",
+    "email": "email",
+    "file": "fileUpload",
+    "image": "fileUpload",
+    "signature": "signature",
+    "text_block": "content",
+}
+
+
+def convert_legacy_form_schema(schema: Dict[str, Any], form_row: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert the legacy pages/items document to sections/pages/blocks."""
+    if isinstance(schema.get("sections"), list):
+        return schema
+    legacy_pages = schema.get("pages")
+    if not isinstance(legacy_pages, list):
+        return schema
+
+    pages: List[Dict[str, Any]] = []
+    for page_index, legacy_page in enumerate(legacy_pages):
+        if not isinstance(legacy_page, dict):
+            continue
+        blocks: List[Dict[str, Any]] = []
+        items = legacy_page.get("items")
+        if not isinstance(items, list):
+            items = []
+        for item_index, item in enumerate(items):
+            if not isinstance(item, dict):
+                continue
+            input_config = item.get("input") if isinstance(item.get("input"), dict) else {}
+            legacy_type = str(input_config.get("type") or item.get("type") or "text")
+            item_id = str(item.get("id") if item.get("id") is not None else f"legacy-{page_index}-{item_index}")
+            label = str(item.get("label") or item.get("name") or f"Question {item_id}")
+            block: Dict[str, Any] = {
+                "id": item_id,
+                "type": LEGACY_BLOCK_TYPE_MAP.get(legacy_type, legacy_type),
+                "name": str(item.get("name") or f"legacy_{item_id}"),
+                "label": label,
+                "isRequired": parse_bool(input_config.get("required")),
+                "legacyConfig": sanitize_json(item),
+            }
+            options = input_config.get("options")
+            if isinstance(options, list):
+                block["options"] = [
+                    {
+                        "type": "option",
+                        "value": str(option.get("value", option.get("val", option.get("id", "")))),
+                        "label": str(option.get("label", option.get("text", option.get("val", "")))),
+                    }
+                    for option in options
+                    if isinstance(option, dict)
+                ]
+            if input_config.get("placeholder") is not None:
+                block["placeholder"] = input_config.get("placeholder")
+            if input_config.get("conditions") is not None:
+                block["conditions"] = sanitize_json(input_config.get("conditions"))
+            blocks.append(block)
+
+        page_id = str(legacy_page.get("id") if legacy_page.get("id") is not None else f"legacy-page-{page_index}")
+        pages.append(
+            {
+                "id": page_id,
+                "title": str(legacy_page.get("label") or legacy_page.get("name") or f"Page {page_index + 1}"),
+                "blocks": blocks,
+                "legacyConfig": sanitize_json({key: value for key, value in legacy_page.items() if key != "items"}),
+            }
+        )
+
+    title = str(form_row.get("display_name") or form_row.get("name") or schema.get("name") or "Imported form")
+    return {
+        "title": title,
+        "description": str(form_row.get("note") or ""),
+        "sections": [{"id": f"legacy-section-{form_row.get('id')}", "title": title, "pages": pages}],
+        "legacyFormMetadata": sanitize_json({key: value for key, value in schema.items() if key != "pages"}),
     }
-    return payload
+
+
+def build_form_definition_schema(form_row: Dict[str, Any], related: Dict[str, List[Dict[str, Any]]]) -> Any:
+    """Return the form document itself, which is what the form renderer consumes.
+
+    The previous migration nested the document below ``legacy_form`` and placed
+    relational metadata beside it.  That changed the schema's root shape and
+    made otherwise valid imported definitions appear empty in the application.
+    Legacy metadata is already represented in the original form JSON and does
+    not belong at the renderable schema root.
+    """
+    del related  # fetched for legacy compatibility; it must not alter the schema shape
+    schema = to_json(form_row.get("form_json"))
+    if isinstance(schema, dict):
+        return convert_legacy_form_schema(schema, form_row)
+    return schema if isinstance(schema, list) else {}
+
+
+def build_question_catalog(schema: Any) -> Dict[str, Dict[str, Any]]:
+    """Index legacy question/block metadata found anywhere in a form schema."""
+    catalog: Dict[str, Dict[str, Any]] = {}
+    sort_order = 0
+
+    def visit(value: Any) -> None:
+        nonlocal sort_order
+        if isinstance(value, dict):
+            identifier = next(
+                (
+                    value.get(key)
+                    for key in ("id", "question_id", "questionId", "block_id", "blockId", "key")
+                    if value.get(key) is not None
+                ),
+                None,
+            )
+            label = next(
+                (
+                    value.get(key)
+                    for key in ("label", "question", "title", "name", "text")
+                    if isinstance(value.get(key), str) and value.get(key).strip()
+                ),
+                None,
+            )
+            block_type = next(
+                (
+                    value.get(key)
+                    for key in ("type", "block_type", "blockType", "input_type", "inputType")
+                    if value.get(key) is not None
+                ),
+                None,
+            )
+            if identifier is not None and (label is not None or block_type is not None):
+                key = str(identifier)
+                if key not in catalog:
+                    catalog[key] = {
+                        "label": str(label or f"Question {key}"),
+                        "block_type": str(block_type or "legacy"),
+                        "sort_order": sort_order,
+                    }
+                    sort_order += 1
+            for child in value.values():
+                visit(child)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child)
+
+    visit(schema)
+    return catalog
 
 
 def find_existing_form_definition(pg_conn, company_id: str, form_name: str) -> Optional[Tuple[str, Optional[str], Optional[str]]]:
     with pg_conn.cursor() as cur:
         cur.execute(
             """
-            SELECT fd.id, fs.id AS schema_id, fv.id AS version_id
+            SELECT fd.id, fs.id AS schema_id, COALESCE(fs.current_version_id, latest_version.id) AS version_id
             FROM public.form_definitions fd
             LEFT JOIN public.form_schemas fs ON fs.form_definition_id = fd.id
-            LEFT JOIN public.form_versions fv ON fv.form_schema_id = fs.id
+            LEFT JOIN LATERAL (
+                SELECT id
+                FROM public.form_versions
+                WHERE form_schema_id = fs.id
+                ORDER BY version DESC, created_at DESC, id DESC
+                LIMIT 1
+            ) latest_version ON TRUE
             WHERE fd.company_id = %s AND fd.name = %s
-            ORDER BY fd.updated_at DESC, fv.created_at DESC, fv.id DESC
+            ORDER BY fd.updated_at DESC, latest_version.id DESC
             LIMIT 1
             """,
             (company_id, form_name),
@@ -314,12 +465,18 @@ def find_existing_form_definition_by_external_id(pg_conn, company_id: str, exter
     with pg_conn.cursor() as cur:
         cur.execute(
             """
-            SELECT fd.id, fs.id AS schema_id, fv.id AS version_id
+            SELECT fd.id, fs.id AS schema_id, COALESCE(fs.current_version_id, latest_version.id) AS version_id
             FROM public.form_definitions fd
             LEFT JOIN public.form_schemas fs ON fs.form_definition_id = fd.id
-            LEFT JOIN public.form_versions fv ON fv.form_schema_id = fs.id
+            LEFT JOIN LATERAL (
+                SELECT id
+                FROM public.form_versions
+                WHERE form_schema_id = fs.id
+                ORDER BY version DESC, created_at DESC, id DESC
+                LIMIT 1
+            ) latest_version ON TRUE
             WHERE fd.company_id = %s AND fd.external_id = %s
-            ORDER BY fd.updated_at DESC, fv.created_at DESC, fv.id DESC
+            ORDER BY fd.updated_at DESC, latest_version.id DESC
             LIMIT 1
             """,
             (company_id, external_id),
@@ -334,6 +491,122 @@ def find_existing_form_definition_by_external_id(pg_conn, company_id: str, exter
         str(row[1]) if row[1] is not None else None,
         str(row[2]) if row[2] is not None else None,
     )
+
+
+def find_existing_form_definitions_by_external_id(pg_conn, company_id: str, external_id: Optional[str]) -> List[Tuple[str, Optional[str], Optional[str]]]:
+    del company_id  # duplicate cleanup must cover older runs that used duplicate company UUIDs
+    if external_id is None:
+        return []
+
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT fd.id, fs.id AS schema_id, COALESCE(fs.current_version_id, latest_version.id) AS version_id
+            FROM public.form_definitions fd
+            LEFT JOIN public.form_schemas fs ON fs.form_definition_id = fd.id
+            LEFT JOIN LATERAL (
+                SELECT id
+                FROM public.form_versions
+                WHERE form_schema_id = fs.id
+                ORDER BY version DESC, created_at DESC, id DESC
+                LIMIT 1
+            ) latest_version ON TRUE
+            WHERE fd.external_id = %s
+            ORDER BY fd.updated_at DESC, latest_version.id DESC
+            """,
+            (external_id,),
+        )
+        rows = cur.fetchall()
+
+    return [
+        (
+            str(row[0]),
+            str(row[1]) if row[1] is not None else None,
+            str(row[2]) if row[2] is not None else None,
+        )
+        for row in rows
+    ]
+
+
+def ensure_form_schema_and_version(
+    pg_conn,
+    form_definition_id: str,
+    form_schema_id: Optional[str],
+    form_version_id: Optional[str],
+    created_at: Any,
+    updated_at: Any,
+    created_by_uuid: Optional[str],
+) -> Tuple[str, str]:
+    with pg_conn.cursor() as cur:
+        if form_schema_id is None:
+            form_schema_id = str(uuid.uuid4())
+            cur.execute(
+                """
+                INSERT INTO public.form_schemas (id, form_definition_id, current_version_id, draft_version_id, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                (form_schema_id, form_definition_id, None, None, created_at, updated_at),
+            )
+
+        if form_version_id is None:
+            form_version_id = str(uuid.uuid4())
+            cur.execute(
+                """
+                INSERT INTO public.form_versions (id, form_schema_id, version, description, status, published_at, review_at, current_schema_snapshot_id, created_by, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (form_version_id, form_schema_id, 1, "Migrated from legacy be_spoke_form", "published", created_at, None, None, created_by_uuid, created_at),
+            )
+
+        cur.execute(
+            """
+            UPDATE public.form_schemas
+            SET current_version_id = %s, draft_version_id = %s, updated_at = %s
+            WHERE id = %s
+            """,
+            (form_version_id, form_version_id, updated_at, form_schema_id),
+        )
+
+    return form_schema_id, form_version_id
+
+
+def update_existing_form_definition_metadata(
+    pg_conn,
+    form_definition_id: str,
+    form_row: Dict[str, Any],
+    updated_by_uuid: Optional[str],
+    updated_at: Any,
+) -> None:
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE public.form_definitions
+            SET description = %s,
+                color = COALESCE(%s, color),
+                purpose = COALESCE(%s, purpose),
+                updated_by = COALESCE(%s, updated_by),
+                updated_at = %s,
+                deleted_at = %s,
+                archived_at = %s,
+                show_in_quick_report = %s,
+                allow_print_site_team = %s,
+                allow_print_company = %s
+            WHERE id = %s
+            """,
+            (
+                form_row.get("note"),
+                form_row.get("color_code"),
+                form_row.get("purpose"),
+                updated_by_uuid,
+                updated_at,
+                form_row.get("deleted_at"),
+                updated_at if parse_bool(form_row.get("is_archived")) else None,
+                parse_bool(form_row.get("is_quick_report")),
+                parse_bool(form_row.get("allow_print_by_site_team")),
+                parse_bool(form_row.get("allow_print_by_company_user")),
+                form_definition_id,
+            ),
+        )
 
 
 def insert_form_definition(pg_conn, form_row: Dict[str, Any], company_id: str, user_map: Dict[int, str], head_office_user_map: Dict[int, int]) -> Tuple[str, str, str, str]:
@@ -354,48 +627,29 @@ def insert_form_definition(pg_conn, form_row: Dict[str, Any], company_id: str, u
 
     form_name = str(form_row.get("name") or f"legacy_form_{form_source_id}")
     external_id = str(form_source_id) if form_source_id is not None else None
+    created_at = form_row.get("created_at") or datetime.now(timezone.utc)
+    updated_at = form_row.get("updated_at") or datetime.now(timezone.utc)
+    form_snapshot_id = str(uuid.uuid5(LEGACY_UUID_NAMESPACE, f"form_schema_snapshot:{form_source_id}"))
 
     existing = find_existing_form_definition_by_external_id(pg_conn, company_id, external_id)
     if existing is not None:
         existing_definition_id, existing_schema_id, existing_version_id = existing
         logging.info("Reusing existing form definition %s for legacy form %s via external_id %s", existing_definition_id, form_source_id, external_id)
-        if existing_schema_id is None:
-            existing_schema_id = str(uuid.uuid4())
-            with pg_conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO public.form_schemas (id, form_definition_id, current_version_id, draft_version_id, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    """,
-                    (existing_schema_id, existing_definition_id, None, None, created_at, updated_at),
-                )
-        if existing_version_id is None:
-            existing_version_id = str(uuid.uuid4())
-            with pg_conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO public.form_versions (id, form_schema_id, version, description, status, published_at, review_at, current_schema_snapshot_id, created_by, created_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    (existing_version_id, existing_schema_id, 1, "Migrated from legacy be_spoke_form", "published", created_at, None, None, created_by_uuid, created_at),
-                )
-                cur.execute(
-                    """
-                    UPDATE public.form_schemas
-                    SET current_version_id = %s, draft_version_id = %s, updated_at = %s
-                    WHERE id = %s
-                    """,
-                    (existing_version_id, existing_version_id, updated_at, existing_schema_id),
-                )
-        return existing_definition_id, existing_schema_id, existing_version_id, str(uuid.uuid4())
+        update_existing_form_definition_metadata(pg_conn, existing_definition_id, form_row, updated_by_uuid, updated_at)
+        existing_schema_id, existing_version_id = ensure_form_schema_and_version(
+            pg_conn,
+            existing_definition_id,
+            existing_schema_id,
+            existing_version_id,
+            created_at,
+            updated_at,
+            created_by_uuid,
+        )
+        return existing_definition_id, existing_schema_id, existing_version_id, form_snapshot_id
 
     form_definition_id = str(uuid.uuid4())
     form_schema_id = str(uuid.uuid4())
     form_version_id = str(uuid.uuid4())
-    form_snapshot_id = str(uuid.uuid4())
-
-    created_at = form_row.get("created_at") or datetime.now(timezone.utc)
-    updated_at = form_row.get("updated_at") or datetime.now(timezone.utc)
     deleted_at = form_row.get("deleted_at")
     archived_at = created_at if parse_bool(form_row.get("is_archived")) else None
 
@@ -481,32 +735,16 @@ def insert_form_definition(pg_conn, form_row: Dict[str, Any], company_id: str, u
                 existing = find_existing_form_definition(pg_conn, company_id, form_name)
                 if existing is not None:
                     existing_definition_id, existing_schema_id, existing_version_id = existing
-                    if existing_schema_id is None:
-                        existing_schema_id = str(uuid.uuid4())
-                        cur.execute(
-                            """
-                            INSERT INTO public.form_schemas (id, form_definition_id, current_version_id, draft_version_id, created_at, updated_at)
-                            VALUES (%s, %s, %s, %s, %s, %s)
-                            """,
-                            (existing_schema_id, existing_definition_id, None, None, created_at, updated_at),
-                        )
-                    if existing_version_id is None:
-                        existing_version_id = str(uuid.uuid4())
-                        cur.execute(
-                            """
-                            INSERT INTO public.form_versions (id, form_schema_id, version, description, status, published_at, review_at, current_schema_snapshot_id, created_by, created_at)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                            """,
-                            (existing_version_id, existing_schema_id, 1, "Migrated from legacy be_spoke_form", "published", created_at, None, None, created_by_uuid, created_at),
-                        )
-                        cur.execute(
-                            """
-                            UPDATE public.form_schemas
-                            SET current_version_id = %s, draft_version_id = %s, updated_at = %s
-                            WHERE id = %s
-                            """,
-                            (existing_version_id, existing_version_id, updated_at, existing_schema_id),
-                        )
+                    update_existing_form_definition_metadata(pg_conn, existing_definition_id, form_row, updated_by_uuid, updated_at)
+                    existing_schema_id, existing_version_id = ensure_form_schema_and_version(
+                        pg_conn,
+                        existing_definition_id,
+                        existing_schema_id,
+                        existing_version_id,
+                        created_at,
+                        updated_at,
+                        created_by_uuid,
+                    )
                     logging.info("Reusing existing form definition %s for company %s and name %s", existing_definition_id, company_id, form_name)
                     return existing_definition_id, existing_schema_id, existing_version_id, form_snapshot_id
             raise
@@ -539,12 +777,16 @@ def insert_form_definition(pg_conn, form_row: Dict[str, Any], company_id: str, u
     return form_definition_id, form_schema_id, form_version_id, form_snapshot_id
 
 
-def insert_form_schema_snapshot(pg_conn, form_snapshot_id: str, schema_payload: Dict[str, Any], created_by_uuid: Optional[str], created_at: Any, form_version_id: str) -> None:
+def insert_form_schema_snapshot(pg_conn, form_snapshot_id: str, schema_payload: Any, created_by_uuid: Optional[str], created_at: Any, form_version_id: str) -> None:
     with pg_conn.cursor() as cur:
         cur.execute(
             """
             INSERT INTO public.form_schema_snapshots (id, schema, created_by, created_at, form_version_id, parent_snapshot_id)
             VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (id) DO UPDATE SET
+                schema = EXCLUDED.schema,
+                created_by = COALESCE(EXCLUDED.created_by, public.form_schema_snapshots.created_by),
+                form_version_id = EXCLUDED.form_version_id
             """,
             (form_snapshot_id, json_param(schema_payload), created_by_uuid, created_at, form_version_id, None),
         )
@@ -552,6 +794,83 @@ def insert_form_schema_snapshot(pg_conn, form_snapshot_id: str, schema_payload: 
             "UPDATE public.form_versions SET current_schema_snapshot_id = %s WHERE id = %s",
             (form_snapshot_id, form_version_id),
         )
+
+
+def soft_delete_untraceable_submissions(pg_conn, form_definition_id: str, form_source_id: int) -> int:
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE public.form_submissions
+            SET deleted_at = COALESCE(deleted_at, now()),
+                updated_at = now()
+            WHERE form_definition_id = %s
+              AND external_id IS NULL
+              AND deleted_at IS NULL
+            """,
+            (form_definition_id,),
+        )
+        deleted_count = cur.rowcount
+
+    if deleted_count:
+        logging.warning(
+            "Soft-deleted %d untraceable submission(s) for legacy form %s",
+            deleted_count,
+            form_source_id,
+        )
+    return deleted_count
+
+
+def refresh_duplicate_form_definitions(
+    pg_conn,
+    form_row: Dict[str, Any],
+    company_id: str,
+    schema_payload: Any,
+    primary_form_definition_id: str,
+    primary_form_version_id: str,
+    primary_form_snapshot_id: str,
+    user_map: Dict[int, str],
+    head_office_user_map: Dict[int, int],
+) -> int:
+    """Backfill all existing duplicate definitions for this legacy form.
+
+    Older migration runs could create/reuse more than one definition for the
+    same legacy external_id.  Updating only the first match leaves stale rows in
+    the UI with the old ``legacy_form`` wrapper, which looks like an empty form.
+    """
+    form_source_id = parse_int(form_row.get("id"))
+    external_id = str(form_source_id) if form_source_id is not None else None
+    if external_id is None:
+        return 0
+
+    created_at = form_row.get("created_at") or datetime.now(timezone.utc)
+    updated_at = form_row.get("updated_at") or datetime.now(timezone.utc)
+    created_by_id = parse_int(form_row.get("created_by_id"))
+    updated_by_id = parse_int(form_row.get("updated_by_id"))
+    created_by_uuid = user_map.get(head_office_user_map.get(created_by_id)) if created_by_id is not None else None
+    updated_by_uuid = user_map.get(head_office_user_map.get(updated_by_id)) if updated_by_id is not None else None
+
+    refreshed = 0
+    for definition_id, schema_id, version_id in find_existing_form_definitions_by_external_id(pg_conn, company_id, external_id):
+        update_existing_form_definition_metadata(pg_conn, definition_id, form_row, updated_by_uuid, updated_at)
+        schema_id, version_id = ensure_form_schema_and_version(
+            pg_conn,
+            definition_id,
+            schema_id,
+            version_id,
+            created_at,
+            updated_at,
+            created_by_uuid,
+        )
+
+        snapshot_id = primary_form_snapshot_id
+        if definition_id != primary_form_definition_id or version_id != primary_form_version_id:
+            snapshot_id = str(uuid.uuid5(LEGACY_UUID_NAMESPACE, f"form_schema_snapshot:{form_source_id}:{version_id}"))
+
+        insert_form_schema_snapshot(pg_conn, snapshot_id, schema_payload, created_by_uuid, created_at, version_id)
+        soft_delete_untraceable_submissions(pg_conn, definition_id, form_source_id)
+        refreshed += 1
+
+    return refreshed
 
 
 def insert_form_submissions(
@@ -566,7 +885,16 @@ def insert_form_submissions(
     site_map: Dict[int, str],
     site_company_map: Dict[str, str],
 ) -> int:
+    question_catalog: Dict[str, Dict[str, Any]] = {}
     with pg_conn.cursor() as cur:
+        cur.execute(
+            "SELECT schema FROM public.form_schema_snapshots WHERE id = %s",
+            (form_snapshot_id,),
+        )
+        schema_row = cur.fetchone()
+        if schema_row is not None:
+            question_catalog = build_question_catalog(schema_row[0])
+
         cur.execute(
             """
             SELECT COUNT(*) AS total, COUNT(external_id) AS with_external_id
@@ -577,37 +905,45 @@ def insert_form_submissions(
         )
         existing_total, existing_with_external_id = cur.fetchone()
 
-    if existing_total and not existing_with_external_id:
+    if existing_total and existing_total > existing_with_external_id:
+        untraceable_total = existing_total - existing_with_external_id
         logging.warning(
-            "Skipping submissions for legacy form %s because %d submission(s) already exist without external_id",
+            "Soft-deleting %d untraceable submission(s) for legacy form %s before canonical remigration",
+            untraceable_total,
             form_source_id,
-            existing_total,
         )
-        return 0
-
-    with mysql_conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT id, form_id, location_id, reported_location_id, user_id, priority, created_at, updated_at,
-                   status, case_status, hide, json_submission, raw_form, record_id, linked_forms,
-                   hide_in_company_timeline, deleted_at, is_deleted, is_qr, is_show_reported_site,
-                   display_submission, count_submission, count_submission_external, case_summary,
-                   location_summary, form_involved_sites
-            FROM be_spoke_form_records
-            WHERE form_id = %s
-            ORDER BY id
-            """,
-            (form_source_id,),
-        )
-        records = cur.fetchall()
+        soft_delete_untraceable_submissions(pg_conn, form_definition_id, form_source_id)
 
     inserted = 0
-    total_records = len(records)
+    with mysql_conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) AS total FROM be_spoke_form_records WHERE form_id = %s",
+            (form_source_id,),
+        )
+        count_row = cur.fetchone()
+        total_records = int(count_row.get("total") or 0)
+
     if total_records:
         logging.info("Migrating form %s submissions: %d record(s)", form_source_id, total_records)
 
     for start in range(0, total_records, SUBMISSION_CHUNK_SIZE):
-        chunk = records[start:start + SUBMISSION_CHUNK_SIZE]
+        with mysql_conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, form_id, location_id, reported_location_id, user_id, priority, created_at, updated_at,
+                       status, case_status, hide, json_submission, raw_form, record_id, linked_forms,
+                       hide_in_company_timeline, deleted_at, is_deleted, is_qr, is_show_reported_site,
+                       display_submission, count_submission, count_submission_external, case_summary,
+                       location_summary, form_involved_sites
+                FROM be_spoke_form_records
+                WHERE form_id = %s
+                ORDER BY id
+                LIMIT %s OFFSET %s
+                """,
+                (form_source_id, SUBMISSION_CHUNK_SIZE, start),
+            )
+            chunk = cur.fetchall()
+
         submission_rows: List[Tuple[Any, ...]] = []
         revision_rows: List[Tuple[Any, ...]] = []
         answer_rows: List[Tuple[Any, ...]] = []
@@ -671,7 +1007,7 @@ def insert_form_submissions(
                     str(uuid.uuid5(LEGACY_UUID_NAMESPACE, f"form_submission_revision:{source_record_id}:1")),
                     submission_id,
                     form_snapshot_id,
-                    json_param(to_json(record.get("raw_form")) or to_json(record.get("json_submission")) or {}),
+                    json_param(to_json(record.get("json_submission")) or to_json(record.get("raw_form")) or {}),
                     1,
                     submitted_by_id,
                     updated_at,
@@ -680,6 +1016,8 @@ def insert_form_submissions(
             )
 
             for answer in answers_by_record_id.get(record.get("id"), []):
+                question_key = str(answer.get("question_id") or "legacy-question")
+                question = question_catalog.get(question_key, {})
                 raw_value = to_json(answer.get("question_value"))
                 if raw_value is None:
                     raw_value = {}
@@ -695,13 +1033,13 @@ def insert_form_submissions(
                     (
                         str(uuid.uuid5(LEGACY_UUID_NAMESPACE, f"form_submission_answer:{answer.get('id')}")),
                         submission_id,
-                        str(answer.get("question_id") or "legacy-question"),
-                        "legacy",
-                        f"Legacy question {answer.get('question_id')}",
+                        question_key,
+                        question.get("block_type", "legacy"),
+                        question.get("label", f"Legacy question {answer.get('question_id')}"),
                         json_param(raw_value),
                         display_value,
                         None,
-                        0,
+                        question.get("sort_order", 0),
                         answer.get("created_at") or created_at,
                         answer.get("updated_at") or created_at,
                     )
@@ -745,7 +1083,12 @@ def insert_form_submissions(
                         id, form_submission_id, form_version_schema_snapshot_id, data, revision,
                         edited_by_id, edited_at, form_version_id
                     ) VALUES %s
-                    ON CONFLICT (id) DO NOTHING
+                    ON CONFLICT (id) DO UPDATE SET
+                        form_version_schema_snapshot_id = EXCLUDED.form_version_schema_snapshot_id,
+                        data = EXCLUDED.data,
+                        edited_by_id = EXCLUDED.edited_by_id,
+                        edited_at = EXCLUDED.edited_at,
+                        form_version_id = EXCLUDED.form_version_id
                     """,
                     revision_rows,
                     page_size=500,
@@ -760,7 +1103,14 @@ def insert_form_submissions(
                         id, form_submission_id, block_id, block_type, label, raw_value, display_value,
                         summary_context, sort_order, created_at, updated_at
                     ) VALUES %s
-                    ON CONFLICT (id) DO NOTHING
+                    ON CONFLICT (id) DO UPDATE SET
+                        block_id = EXCLUDED.block_id,
+                        block_type = EXCLUDED.block_type,
+                        label = EXCLUDED.label,
+                        raw_value = EXCLUDED.raw_value,
+                        display_value = EXCLUDED.display_value,
+                        sort_order = EXCLUDED.sort_order,
+                        updated_at = EXCLUDED.updated_at
                     """,
                     answer_rows,
                     page_size=500,
@@ -832,6 +1182,17 @@ def main(dry_run: bool = False):
                     schema_payload = build_form_definition_schema(form_row, related)
                     form_definition_id, form_schema_id, form_version_id, form_snapshot_id = insert_form_definition(pg_conn, form_row, company_id, user_map, head_office_user_map)
                     insert_form_schema_snapshot(pg_conn, form_snapshot_id, schema_payload, None, form_row.get("created_at") or datetime.now(timezone.utc), form_version_id)
+                    refreshed_definitions = refresh_duplicate_form_definitions(
+                        pg_conn,
+                        form_row,
+                        company_id,
+                        schema_payload,
+                        form_definition_id,
+                        form_version_id,
+                        form_snapshot_id,
+                        user_map,
+                        head_office_user_map,
+                    )
                     submissions_count = insert_form_submissions(pg_conn, mysql_conn, form_definition_id, form_version_id, form_snapshot_id, source_form_id, company_id, user_map, site_map, site_company_map)
                     pg_conn.commit()
                     migrated_forms += 1
@@ -840,7 +1201,7 @@ def main(dry_run: bool = False):
                     if forms_since_commit >= COMMIT_EVERY:
                         pg_conn.commit()
                         forms_since_commit = 0
-                    logging.info("Migrated form %s with %d submissions", source_form_id, submissions_count)
+                    logging.info("Migrated form %s with %d submissions; refreshed %d definition(s)", source_form_id, submissions_count, refreshed_definitions)
                 except Exception:  # pragma: no cover - runtime guard
                     pg_conn.rollback()
                     logging.exception("Skipping form %s due to error", source_form_id)
