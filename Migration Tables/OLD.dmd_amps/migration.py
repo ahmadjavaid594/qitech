@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Migrate data from MySQL `qitech.dmd_legal_category` to Postgres `public.dmd_lookup_legal_categories`.
+"""Migrate MySQL `dmd_amps` to Postgres `dmd_actual_medicinal_products`.
 
 Set connection details via environment variables or edit the defaults below.
 """
@@ -28,11 +28,11 @@ MYSQL_USER = os.getenv("MYSQL_USER", "root")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "root")
 MYSQL_DB = os.getenv("MYSQL_DB", "qitech")
 
-PG_HOST = os.getenv("PG_HOST", "qitech-pg-test-17943.postgres.database.azure.com")
+PG_HOST = os.getenv("PG_HOST", "localhost")
 PG_PORT = int(os.getenv("PG_PORT", "5432"))
-PG_USER = os.getenv("PG_USER", "pgadmin")
-PG_PASSWORD = os.getenv("PG_PASSWORD", "2fac05f6ac12e581bc2aeb8bc188deac")
-PG_DB = os.getenv("PG_DB", "qi-tech")
+PG_USER = os.getenv("PG_USER", "postgres")
+PG_PASSWORD = os.getenv("PG_PASSWORD", "postgres")
+PG_DB = os.getenv("PG_DB", "qitech_migration")
 
 # Batch size for fetching/inserting
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
@@ -41,33 +41,55 @@ BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
 def fetch_mysql_rows(connection, offset: int, limit: int) -> List[Dict[str, Any]]:
     with connection.cursor() as cur:
         cur.execute(
-            "SELECT cd AS id, `desc` AS description, created_at, updated_at FROM dmd_legal_category ORDER BY cd LIMIT %s OFFSET %s",
+            """SELECT apid, vpid, name, supp_cd, lic_auth_cd, created_at
+               FROM dmd_amps ORDER BY apid LIMIT %s OFFSET %s""",
             (limit, offset),
         )
         return cur.fetchall()
 
 
-def get_existing_ids(pg_conn) -> set:
+def get_existing_external_ids(pg_conn) -> set:
     with pg_conn.cursor() as cur:
-        cur.execute("SELECT id FROM public.dmd_lookup_legal_categories")
+        cur.execute(
+            """SELECT external_id FROM public.dmd_actual_medicinal_products
+               WHERE external_id IS NOT NULL"""
+        )
         return {row[0] for row in cur.fetchall()}
 
 
-def transform_row(row: Dict[str, Any]) -> Dict[str, Any]:
-    raw_id = row["id"]
+def parse_int(value: Any) -> int | None:
+    if value is None or value == "":
+        return None
     try:
-        target_id = int(raw_id) if raw_id is not None else None
+        return int(value)
     except (TypeError, ValueError):
-        raise ValueError(f"Unable to convert source cd to integer id: {raw_id!r}")
+        return None
+
+
+def parse_smallint(value: Any) -> int | None:
+    parsed = parse_int(value)
+    return parsed if parsed is not None and -32768 <= parsed <= 32767 else None
+
+
+def transform_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    external_id = parse_int(row.get("apid"))
+    virtual_medicinal_product_id = parse_int(row.get("vpid"))
+    if external_id is None:
+        raise ValueError(f"Missing or invalid apid: {row.get('apid')!r}")
+    if virtual_medicinal_product_id is None:
+        raise ValueError(f"Missing or invalid vpid: {row.get('vpid')!r}")
 
     created_at = row.get("created_at") or datetime.now(timezone.utc)
-    updated_at = row.get("updated_at") or datetime.now(timezone.utc)
 
     return {
-        "id": target_id,
-        "description": row.get("description"),
+        "external_id": external_id,
+        "release_version": "migrated",
+        "invalid": False,
+        "virtual_medicinal_product_id": virtual_medicinal_product_id,
+        "name": row.get("name"),
+        "supplier_code": parse_int(row.get("supp_cd")),
+        "lic_auth_code": parse_smallint(row.get("lic_auth_cd")),
         "created_at": created_at,
-        "updated_at": updated_at,
     }
 
 
@@ -75,24 +97,32 @@ def insert_batch(pg_conn, rows: List[Dict[str, Any]]):
     if not rows:
         return
     cols = [
-        "id",
-        "description",
+        "external_id",
+        "release_version",
+        "invalid",
+        "virtual_medicinal_product_id",
+        '"name"',
+        "supplier_code",
+        "lic_auth_code",
         "created_at",
-        "updated_at",
     ]
     template = "(%s)" % ",".join(["%s"] * len(cols))
     values = [
         (
-            r["id"],
-            r["description"],
+            r["external_id"],
+            r["release_version"],
+            r["invalid"],
+            r["virtual_medicinal_product_id"],
+            r["name"],
+            r["supplier_code"],
+            r["lic_auth_code"],
             r["created_at"],
-            r["updated_at"],
         )
         for r in rows
     ]
 
     sql = (
-        "INSERT INTO public.dmd_lookup_legal_categories (" + 
+        "INSERT INTO public.dmd_actual_medicinal_products (" +
         ",".join(cols) + ") VALUES %s"
     )
 
@@ -117,8 +147,8 @@ def main(dry_run: bool = False):
     pg_conn = psycopg2.connect(host=PG_HOST, port=PG_PORT, user=PG_USER, password=PG_PASSWORD, dbname=PG_DB)
 
     try:
-        existing = get_existing_ids(pg_conn)
-        logging.info("Found %d existing ids in Postgres", len(existing))
+        existing = get_existing_external_ids(pg_conn)
+        logging.info("Found %d existing external IDs in Postgres", len(existing))
 
         offset = 0
         total_inserted = 0
@@ -130,10 +160,10 @@ def main(dry_run: bool = False):
             transformed = []
             for r in rows:
                 t = transform_row(r)
-                if t["id"] in existing:
+                if t["external_id"] in existing:
                     continue
                 transformed.append(t)
-                existing.add(t["id"])
+                existing.add(t["external_id"])
 
             if dry_run:
                 logging.info("Dry-run: would insert %d rows for offset %d", len(transformed), offset)

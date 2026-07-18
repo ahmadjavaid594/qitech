@@ -12,6 +12,18 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent
 DEFAULT_BASE_DIR = ROOT_DIR / "Migration Tables"
 
+# Temporarily skip only the forms migration.
+SKIPPED_MIGRATIONS = {
+    "OLD.forms",
+}
+
+# These scripts either ignore --dry-run or do not accept it. Never invoke them
+# from a dry run, because doing so would write to the destination database.
+DRY_RUN_UNSUPPORTED = {
+    "OLD.forms",
+    "OLD.head_office_cases",
+}
+
 
 MIGRATION_ORDER = [
     # Core identities / tenants
@@ -98,7 +110,9 @@ def build_dependency_map() -> dict[str, set[str]]:
             "OLD.be_spoke_form_categories",
             "OLD.head_office_orginisation_groups",
         },
-        "OLD.head_office_cases": {"OLD.head_offices", "OLD.head_office_users", "OLD.forms"},
+        # This migration builds case templates directly from the legacy forms
+        # tables; it does not consume the output of OLD.forms.
+        "OLD.head_office_cases": {"OLD.head_offices", "OLD.head_office_users"},
         "OLD.case_handler_users": {"OLD.head_office_cases", "OLD.head_office_users"},
         "OLD.head_office_user_timings": {"OLD.head_office_users"},
         "OLD.head_office_holidays": {"OLD.head_offices", "OLD.users", "OLD.head_office_users"},
@@ -113,14 +127,14 @@ def build_dependency_map() -> dict[str, set[str]]:
         "OLD.dmd_unit_of_measures": set(),
         "OLD.dmd_vtms": set(),
         "OLD.dmd_vmp": {"OLD.dmd_vtms"},
-        "OLD.dmd_vmpps": {"OLD.dmd_vmp"},
+        "OLD.dmd_vmpps": {"OLD.dmd_vmp", "OLD.dmd_unit_of_measures"},
         "OLD.dmd_vmp_drug_forms": {"OLD.dmd_vmp", "OLD.dmd_drug_forms"},
         "OLD.dmd_vmp_routes": {"OLD.dmd_vmp", "OLD.dmd_routes"},
         "OLD.dmd_vmp_control_drug_info": {"OLD.dmd_vmp", "OLD.dmd_control_drug_categories"},
         "OLD.dmd_vmp_ingredients": {"OLD.dmd_vmp", "OLD.dmd_ingredients"},
-        "OLD.amp": set(),
-        "OLD.dmd_amps": {"OLD.dmd_legal_category"},
-        "OLD.dmd_ampps": {"OLD.amp"},
+        "OLD.amp": {"OLD.dmd_vmp"},
+        "OLD.dmd_amps": {"OLD.dmd_vmp", "OLD.dmd_suppliers"},
+        "OLD.dmd_ampps": {"OLD.dmd_amps", "OLD.dmd_vmpps", "OLD.dmd_legal_category"},
     }
 
 
@@ -128,8 +142,15 @@ def sort_migration_keys(keys) -> list[str]:
     return sorted(keys, key=lambda key: (ORDER_PRIORITY.get(key, len(ORDER_PRIORITY)), key))
 
 
-def find_migration_scripts(base_dir: Path) -> list[Path]:
-    discovered_paths = sorted(base_dir.rglob("migration.py"))
+def find_migration_scripts(base_dir: Path, include_skipped: set[str] | None = None) -> list[Path]:
+    include_skipped = include_skipped or set()
+    all_discovered_paths = sorted(base_dir.rglob("migration.py"))
+    discovered_paths = [
+        script_path
+        for script_path in all_discovered_paths
+        if normalize_script_key(script_path, base_dir) not in SKIPPED_MIGRATIONS
+        or normalize_script_key(script_path, base_dir) in include_skipped
+    ]
     if not discovered_paths:
         return []
 
@@ -137,6 +158,29 @@ def find_migration_scripts(base_dir: Path) -> list[Path]:
         normalize_script_key(script_path, base_dir): script_path for script_path in discovered_paths
     }
     dependency_map = build_dependency_map()
+
+    undeclared = sorted(set(script_keys) - set(dependency_map))
+    if undeclared:
+        raise ValueError(
+            "Migration dependencies are not declared for: " + ", ".join(undeclared)
+        )
+
+    all_discovered_keys = {
+        normalize_script_key(script_path, base_dir) for script_path in all_discovered_paths
+    }
+    skipped_prerequisites = {
+        key: sorted(dep for dep in dependency_map[key] if dep in all_discovered_keys - set(script_keys))
+        for key in script_keys
+    }
+    skipped_prerequisites = {
+        key: deps for key, deps in skipped_prerequisites.items() if deps
+    }
+    if skipped_prerequisites:
+        details = "; ".join(
+            f"{key} requires {', '.join(deps)}"
+            for key, deps in sorted(skipped_prerequisites.items())
+        )
+        raise ValueError(f"Required migrations are skipped: {details}")
 
     dependencies = {key: set() for key in script_keys}
     for key, deps in dependency_map.items():
@@ -165,7 +209,12 @@ def find_migration_scripts(base_dir: Path) -> list[Path]:
             ready = deque(sort_migration_keys(ready))
 
     if len(ordered_keys) != len(script_keys):
-        return discovered_paths
+        cyclic_keys = sort_migration_keys(
+            key for key, degree in indegree.items() if degree > 0
+        )
+        raise ValueError(
+            "Migration dependency cycle detected involving: " + ", ".join(cyclic_keys)
+        )
 
     return [script_keys[key] for key in ordered_keys]
 
@@ -220,10 +269,24 @@ def main() -> int:
         action="store_true",
         help="Pass --dry-run to each migration script when supported.",
     )
-    parser.add_argument(
+    failure_group = parser.add_mutually_exclusive_group()
+    failure_group.add_argument(
         "--stop-on-failure",
+        dest="stop_on_failure",
         action="store_true",
-        help="Stop execution if any migration script exits with a non-zero status.",
+        help="Stop after the first failure (default).",
+    )
+    failure_group.add_argument(
+        "--continue-on-failure",
+        dest="stop_on_failure",
+        action="store_false",
+        help="Continue with independent migrations after a failure.",
+    )
+    parser.set_defaults(stop_on_failure=True)
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="Print the resolved migration order without running any scripts.",
     )
     parser.add_argument(
         "--start-at",
@@ -240,7 +303,12 @@ def main() -> int:
         print(f"Base directory does not exist: {base_dir}", file=sys.stderr)
         return 2
 
-    scripts = find_migration_scripts(base_dir)
+    include_skipped = {args.only} if args.only else set()
+    try:
+        scripts = find_migration_scripts(base_dir, include_skipped=include_skipped)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     if not scripts:
         print(f"No migration.py files found under: {base_dir}", file=sys.stderr)
         return 1
@@ -250,21 +318,51 @@ def main() -> int:
         print(str(exc), file=sys.stderr)
         return 2
 
+    if args.list:
+        for index, script_path in enumerate(scripts, start=1):
+            print(f"{index:02d}. {normalize_script_key(script_path, base_dir)}")
+        if SKIPPED_MIGRATIONS - include_skipped:
+            print("\nSkipped by configuration:")
+            for key in sort_migration_keys(SKIPPED_MIGRATIONS - include_skipped):
+                print(f" - {key}")
+        return 0
+
+    if args.dry_run:
+        unsupported = [
+            normalize_script_key(script, base_dir)
+            for script in scripts
+            if normalize_script_key(script, base_dir) in DRY_RUN_UNSUPPORTED
+        ]
+        if unsupported:
+            print(
+                "Dry run aborted because these migrations do not safely support --dry-run: "
+                + ", ".join(unsupported),
+                file=sys.stderr,
+            )
+            return 2
+
     extra_args = ["--dry-run"] if args.dry_run else []
     failures: list[tuple[Path, int]] = []
+    attempted = 0
+    succeeded = 0
 
     for script_path in scripts:
+        attempted += 1
         exit_code = run_migration(script_path, extra_args)
         if exit_code != 0:
             failures.append((script_path, exit_code))
             print(f"Migration failed: {script_path} (exit code {exit_code})", file=sys.stderr)
             if args.stop_on_failure:
                 break
+        else:
+            succeeded += 1
 
     print("\nSummary")
     print("-------")
-    print(f"Found {len(scripts)} migration script(s).")
-    print(f"Completed {len(scripts) - len(failures)} successfully.")
+    print(f"Selected {len(scripts)} migration script(s).")
+    print(f"Attempted {attempted}; completed {succeeded} successfully.")
+    if attempted < len(scripts):
+        print(f"Not attempted after failure: {len(scripts) - attempted}.")
     if failures:
         print(f"Failed {len(failures)} script(s).", file=sys.stderr)
         for script_path, exit_code in failures:

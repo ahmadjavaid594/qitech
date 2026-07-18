@@ -26,11 +26,11 @@ MYSQL_USER = os.getenv("MYSQL_USER", "root")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "root")
 MYSQL_DB = os.getenv("MYSQL_DB", "qitech")
 
-PG_HOST = os.getenv("PG_HOST", "qitech-pg-test-17943.postgres.database.azure.com")
+PG_HOST = os.getenv("PG_HOST", "localhost")
 PG_PORT = int(os.getenv("PG_PORT", "5432"))
-PG_USER = os.getenv("PG_USER", "pgadmin")
-PG_PASSWORD = os.getenv("PG_PASSWORD", "2fac05f6ac12e581bc2aeb8bc188deac")
-PG_DB = os.getenv("PG_DB", "qi-tech")
+PG_USER = os.getenv("PG_USER", "postgres")
+PG_PASSWORD = os.getenv("PG_PASSWORD", "postgres")
+PG_DB = os.getenv("PG_DB", "qitech_migration")
 
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
 
